@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from '_macros.html' import format_currency %} 
+
+{% block title %}유산소 운동 인증{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">유산소 운동 인증</h2>
+
+  <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-blue-50">
+    <h3 class="text-xl font-semibold text-blue-800 mb-4">유산소 운동 기록</h3>
+    <form method="post" action="{{ url_for('cardio') }}" enctype="multipart/form-data" class="space-y-4">
+      <div>
+        <label for="cardio_date" class="block text-sm font-medium text-gray-700 mb-1">운동 날짜</label>
+        <input type="date" id="cardio_date" name="cardio_date" required
+               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label for="image" class="block text-sm font-medium text-gray-700 mb-1">인증 사진 (선택 사항)</label>
+        <input type="file" id="image" name="image" accept="image/*"
+               class="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+        <p class="mt-1 text-sm text-gray-500">허용되는 형식: PNG, JPG, JPEG, GIF</p>
+      </div>
+      <button type="submit"
+              class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
+        기록 제출
+      </button>
+    </form>
+  </div>
+
+  <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-green-50">
+    <h3 class="text-xl font-semibold text-green-800 mb-4">이번 주 유산소 운동 ({{ start_of_week.strftime('%m-%d') }} ~ {{ end_of_week.strftime('%m-%d') }})</h3>
+    <p class="text-gray-800 text-lg mb-4">
+      주간 운동 횟수: <span class="font-bold text-green-700">{{ weekly_count }}회</span> / 3회
+      {% if weekly_count >= 3 %}
+        <span class="text-green-500 ml-2">✅ 목표 달성!</span>
+      {% else %}
+        <span class="text-orange-500 ml-2">⚠️ 목표 미달성</span>
+      {% endif %}
+    </p>
+    <div class="grid grid-cols-7 gap-2 text-center text-sm font-medium text-gray-700 mb-4">
+      {% set days_of_week = ['월', '화', '수', '목', '금', '토', '일'] %}
+      {# weekly_dates는 app.py에서 이미 계산되어 넘어옵니다. #}
+      {% for current_date in weekly_dates %} {# <-- 수정: weekly_dates 사용 #}
+        {% set has_log = false %}
+        {% for log in weekly_cardio_logs %}
+          {% if log.date == current_date %}
+            {% set has_log = true %}
+            {# break는 Jinja2 if 문 내에서 직접 사용할 수 없습니다. #}
+            {# 따라서, log가 발견되면 더 이상 찾을 필요가 없으므로 for 루프를 종료하는 로직은 Python에서 처리하거나, #}
+            {# Jinja2에서는 모든 log를 확인하도록 둡니다. 여기서는 이미 최적화된 데이터가 넘어온다고 가정합니다. #}
+          {% endif %}
+        {% endfor %}
+        <div class="p-2 rounded-lg {% if has_log %}bg-green-200{% else %}bg-gray-200{% endif %}">
+          {{ days_of_week[loop.index0] }}<br>{{ current_date.day }} {# loop.index0로 요일 매핑 #}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="p-6 border border-gray-200 rounded-lg bg-gray-50">
+    <h3 class="text-xl font-semibold text-gray-800 mb-4">최근 유산소 기록</h3>
+    {% if recent_logs %}
+      <ul class="space-y-3">
+        {% for log in recent_logs %}
+          <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex items-center">
+            <span class="font-medium text-gray-700 mr-3">{{ log.date.strftime('%Y-%m-%d') }}</span>
+            {% if log.image_filename %}
+              <img src="{{ url_for('uploaded_file', filename=log.image_filename) }}" 
+                   alt="인증샷" 
+                   class="w-16 h-16 object-cover rounded-lg shadow-sm mr-3"
+                   onerror="this.onerror=null; this.src='https://placehold.co/64x64/cccccc/333333?text=N/A';"
+                >
+              </div>
+            {% endif %}
+            <span class="text-gray-600 text-sm">기록 시간: {{ log.timestamp.strftime('%H:%M') }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-center text-gray-600">기록된 유산소 운동이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+  </div>
+</div>
+{% endblock %}
+

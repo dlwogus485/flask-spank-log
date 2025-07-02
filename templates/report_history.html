@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}나의 보고서 이력{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">나의 보고서 이력</h2>
+
+  <form id="deleteForm" action="{{ url_for('delete_report_selected') }}" method="post">
+    {% if reports %}
+      <ul class="space-y-4">
+        {% for report in reports %}
+          <li class="flex items-start bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+            <input type="checkbox" name="delete_ids" value="{{ report.id }}" class="mt-1 mr-4 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+            <div class="flex-1">
+              <p class="text-sm text-gray-500 mb-1">
+                {{ report.timestamp.strftime('%Y-%m-%d %H:%M') }} 
+                {% if report.is_late %}<span class="text-red-500 font-bold ml-2"> (10시 이후 제출)</span>{% endif %}
+              </p>
+              <p class="text-gray-800 leading-relaxed">{{ report.content }}</p>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+      <div class="mt-8 text-center">
+        <button type="button" id="deleteButton"
+                class="px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">
+          선택 삭제
+        </button>
+      </div>
+    {% else %}
+      <p class="text-center text-gray-600 text-lg">제출된 보고서가 없습니다.</p>
+    {% endif %}
+  </form>
+
+  <div class="mt-8 text-center space-x-4">
+    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+    <a href="{{ url_for('logout') }}" class="inline-block text-red-600 hover:underline font-medium">로그아웃</a>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const deleteButton = document.getElementById('deleteButton');
+    const deleteForm = document.getElementById('deleteForm');
+
+    if (deleteButton) {
+      deleteButton.addEventListener('click', (event) => {
+        event.preventDefault(); // 기본 폼 제출 방지
+
+        const checkboxes = document.querySelectorAll('input[name="delete_ids"]:checked');
+        if (checkboxes.length === 0) {
+          window.showConfirmModal('삭제할 이력을 선택해주세요.', (confirmed) => {
+            // No action needed, just an alert modal
+          });
+          return;
+        }
+
+        window.showConfirmModal('선택한 이력을 삭제하시겠습니까?', (confirmed) => {
+          if (confirmed) {
+            deleteForm.submit(); // Submit the form if user confirms
+          }
+        });
+      });
+    }
+  });
+</script>
+{% endblock %}
+

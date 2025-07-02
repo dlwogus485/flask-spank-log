@@ -3,18 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}보고서 앱{% endblock %}</title>
+  <title>{% block title %}생활 습관 관리 앱{% endblock %}</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Inter 폰트 설정 -->
+  <!-- Inter 폰트 설정 (Google Fonts) -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* Inter 폰트 적용 */
     body {
       font-family: 'Inter', sans-serif;
     }
     /* 커스텀 모달 스타일 */
     .modal {
-      display: none; /* 기본 숨김 */
+      display: none; /* 기본 숨김 (이 줄만 남기고 아래 display:flex; 줄은 제거) */
       position: fixed; /* 화면 고정 */
       z-index: 1000; /* 다른 요소 위에 표시 */
       left: 0;
@@ -23,12 +24,12 @@
       height: 100%;
       overflow: auto; /* 내용이 넘칠 경우 스크롤 */
       background-color: rgba(0,0,0,0.4); /* 반투명 배경 */
+      /* display: flex; <--- 이 줄을 제거합니다. */
       justify-content: center;
       align-items: center;
     }
     .modal-content {
       background-color: #fefefe;
-      margin: auto;
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -42,6 +43,7 @@
       gap: 16px;
       margin-top: 20px;
     }
+    /* 플래시 메시지 스타일 */
     .flash-message {
       padding: 12px 20px;
       margin-bottom: 16px;
@@ -49,7 +51,9 @@
       font-weight: 500;
       text-align: center;
       opacity: 0; /* 초기에는 숨김 */
-      transition: opacity 0.5s ease-in-out;
+      transition: opacity 0.5s ease-in-out, height 0.5s ease-in-out, padding 0.5s ease-in-out, margin-bottom 0.5s ease-in-out;
+      height: auto; /* 초기 높이 */
+      overflow: hidden; /* 숨길 때 내용 잘림 방지 */
     }
     .flash-message.show {
       opacity: 1; /* 표시될 때 나타남 */
@@ -104,7 +108,7 @@
   </div>
 
   <script>
-    // 플래시 메시지 자동 숨김
+    // 플래시 메시지 자동 숨김 로직
     document.addEventListener('DOMContentLoaded', () => {
       const flashMessages = document.querySelectorAll('.flash-message');
       flashMessages.forEach(msg => {
@@ -114,7 +118,7 @@
           msg.style.padding = '0';
           msg.style.marginBottom = '0';
           msg.style.overflow = 'hidden';
-          msg.style.transition = 'opacity 0.5s ease-in-out, height 0.5s ease-in-out, padding 0.5s ease-in-out, margin-bottom 0.5s ease-in-out';
+          // transition 속성은 CSS에 미리 정의되어 있습니다.
         }, 3000); // 3초 후 숨김 시작
       });
 
@@ -123,25 +127,28 @@
       const modalMessage = document.getElementById('modalMessage');
       const modalConfirmBtn = document.getElementById('modalConfirmBtn');
       const modalCancelBtn = document.getElementById('modalCancelBtn');
-      let confirmCallback = null;
+      let confirmCallback = null; // 콜백 함수를 저장할 변수
 
+      // 모달을 표시하는 전역 함수
       window.showConfirmModal = (message, callback) => {
         modalMessage.textContent = message;
         confirmCallback = callback;
         confirmModal.style.display = 'flex'; // 모달 표시
       };
 
+      // 확인 버튼 클릭 시
       modalConfirmBtn.onclick = () => {
         confirmModal.style.display = 'none'; // 모달 숨김
         if (confirmCallback) {
-          confirmCallback(true);
+          confirmCallback(true); // 콜백 함수에 true 전달
         }
       };
 
+      // 취소 버튼 클릭 시
       modalCancelBtn.onclick = () => {
         confirmModal.style.display = 'none'; // 모달 숨김
         if (confirmCallback) {
-          confirmCallback(false);
+          confirmCallback(false); // 콜백 함수에 false 전달
         }
       };
 
@@ -158,4 +165,7 @@
   </script>
 </body>
 </html>
+{% macro format_currency(value) %}
+    {{ "{:,.0f}".format(value) }}
+{% endmacro %}
 

@@ -1,0 +1,6 @@
+{# templates/_macros.html #}
+
+{% macro format_currency(value) %}
+    {{ "{:,.0f}".format(value) }}
+{% endmacro %}
+

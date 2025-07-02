@@ -1,38 +1,120 @@
 {% extends "base.html" %}
 
-{% block title %}보고서 대시보드{% endblock %}
+{% block title %}관리자 대시보드{% endblock %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-4xl mx-auto">
-  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">전체 보고서 목록</h2>
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">관리자 대시보드</h2>
 
-  {% if reports %}
-    <div class="space-y-6">
-      {% for report in reports %}
-        <div class="border border-gray-200 rounded-lg p-6 bg-gray-50 shadow-sm">
-          <p class="text-sm text-gray-500 mb-2">
-            <span class="font-semibold text-gray-700">{{ report.user.username }}</span> - {{ report.timestamp.strftime('%Y-%m-%d %H:%M') }}
-          </p>
-          <p class="text-gray-800 leading-relaxed mb-4">{{ report.content }}</p>
-          {% if report.image_filename %}
-            <div class="mt-4">
-              <img src="{{ url_for('uploaded_file', filename=report.image_filename) }}" 
-                   alt="첨부 이미지" 
-                   class="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
-                   onerror="this.onerror=null; this.src='https://placehold.co/300x200/cccccc/333333?text=Image+Not+Found';"
-              >
-            </div>
-          {% endif %}
-        </div>
-      {% endfor %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- 최근 10시 가상톡 보고서 -->
+    <div class="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-200">
+      <h3 class="text-xl font-semibold text-blue-800 mb-4">최근 10시 가상톡 보고서</h3>
+      {% if reports %}
+        <ul class="space-y-3">
+          {% for report in reports %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ report.user.username }}</span>: {{ report.content | truncate(50) }}
+              <span class="text-gray-500 text-xs">({{ report.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              {% if report.is_late %}<span class="text-red-500 font-bold ml-1">(지각)</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">제출된 보고서가 없습니다.</p>
+      {% endif %}
     </div>
-  {% else %}
-    <p class="text-center text-gray-600 text-lg">아직 제출된 보고서가 없습니다.</p>
-  {% endif %}
 
-  <div class="mt-8 text-center">
-    <a href="/logout" class="inline-block px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">로그아웃</a>
+    <!-- 최근 소액결제 내역 -->
+    <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">
+      <h3 class="text-xl font-semibold text-purple-800 mb-4">최근 소액결제 내역</h3>
+      {% if payments %}
+        <ul class="space-y-3">
+          {% for payment in payments %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ payment.user.username }}</span>: {{ payment.description | default('설명 없음') }} - {{ format_currency(payment.amount | int) }}원 {# <-- 이 부분 수정 #}
+              <span class="text-gray-500 text-xs">({{ payment.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">기록된 결제 내역이 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <!-- 최근 독후감 -->
+    <div class="bg-green-50 p-6 rounded-xl shadow-sm border border-green-200">
+      <h3 class="text-xl font-semibold text-green-800 mb-4">최근 독후감</h3>
+      {% if book_reviews %}
+        <ul class="space-y-3">
+          {% for review in book_reviews %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ review.user.username }}</span>: "{{ review.book_title }}" ({{ review.page_count }}p)
+              <span class="text-gray-500 text-xs">({{ review.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">제출된 독후감이 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <!-- 최근 유산소 기록 -->
+    <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200">
+      <h3 class="text-xl font-semibold text-red-800 mb-4">최근 유산소 기록</h3>
+      {% if cardio_logs %}
+        <ul class="space-y-3">
+          {% for log in cardio_logs %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ log.user.username }}</span>: {{ log.date.strftime('%Y-%m-%d') }}
+              <span class="text-gray-500 text-xs">({{ log.timestamp.strftime('%H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">기록된 유산소 운동이 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <!-- 최근 체중 기록 -->
+    <div class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
+      <h3 class="text-xl font-semibold text-yellow-800 mb-4">최근 체중 기록</h3>
+      {% if weight_entries %}
+        <ul class="space-y-3">
+          {% for entry in weight_entries %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ entry.user.username }}</span>: {{ entry.weight_kg }}kg
+              <span class="text-gray-500 text-xs">({{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">기록된 체중이 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <!-- 최근 식사 인증 -->
+    <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200">
+      <h3 class="text-xl font-semibold text-teal-800 mb-4">최근 식사 인증</h3>
+      {% if meal_logs %}
+        <ul class="space-y-3">
+          {% for log in meal_logs %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ log.user.username }}</span>: {{ log.meal_type | capitalize }}
+              <span class="text-gray-500 text-xs">({{ log.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">기록된 식사 인증이 없습니다.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mt-10 text-center">
+    <a href="{{ url_for('logout') }}" class="inline-block px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">로그아웃</a>
   </div>
 </div>
+
 {% endblock %}
 
