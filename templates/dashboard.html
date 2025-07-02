@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}보고서 대시보드{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-4xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">전체 보고서 목록</h2>
+
+  {% if reports %}
+    <div class="space-y-6">
+      {% for report in reports %}
+        <div class="border border-gray-200 rounded-lg p-6 bg-gray-50 shadow-sm">
+          <p class="text-sm text-gray-500 mb-2">
+            <span class="font-semibold text-gray-700">{{ report.user.username }}</span> - {{ report.timestamp.strftime('%Y-%m-%d %H:%M') }}
+          </p>
+          <p class="text-gray-800 leading-relaxed mb-4">{{ report.content }}</p>
+          {% if report.image_filename %}
+            <div class="mt-4">
+              <img src="{{ url_for('uploaded_file', filename=report.image_filename) }}" 
+                   alt="첨부 이미지" 
+                   class="max-w-full h-auto rounded-lg shadow-md border border-gray-200"
+                   onerror="this.onerror=null; this.src='https://placehold.co/300x200/cccccc/333333?text=Image+Not+Found';"
+              >
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-center text-gray-600 text-lg">아직 제출된 보고서가 없습니다.</p>
+  {% endif %}
+
+  <div class="mt-8 text-center">
+    <a href="/logout" class="inline-block px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">로그아웃</a>
+  </div>
+</div>
+{% endblock %}
+
