@@ -27,7 +27,7 @@
     </div>
 
     <!-- 최근 벌점 내역 -->
-    <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200">
+    <a href="{{ url_for('penalties') }}" class="block p-6 bg-red-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1"> {# <-- 이 부분 수정: a 태그로 감쌈 #}
       <h3 class="text-xl font-semibold text-red-800 mb-4">최근 벌점 내역</h3>
       {% if penalties %}
         <ul class="space-y-3">
@@ -41,26 +41,33 @@
       {% else %}
         <p class="text-gray-600">기록된 벌점 내역이 없습니다.</p>
       {% endif %}
-    </div>
+    </a> {# <-- a 태그 닫음 #}
 
-    <!-- 최근 반성문/교육 요청 -->
-    <div class="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-200">
-      <h3 class="text-xl font-semibold text-indigo-800 mb-4">최근 반성문/교육 요청</h3>
-      {% if reflections %}
+    {# <!-- 최근 반성문/교육 요청 (섹션 제거됨) --> #}
+
+    <!-- 최근 체벌/교육 일정 요청 -->
+    <a href="{{ url_for('admin_punishment_requests') }}" class="block p-6 bg-pink-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+      <h3 class="text-xl font-semibold text-pink-800 mb-4">최근 체벌/교육 일정 요청</h3>
+      {% if punishment_schedules %}
         <ul class="space-y-3">
-          {% for reflection in reflections %}
+          {% for schedule in punishment_schedules %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ reflection.user.username }}</span>: "{{ reflection.reflection_content | truncate(50) }}"
-              {% if reflection.request_education %}<span class="text-indigo-600 font-bold ml-1">(교육 요청)</span>{% endif %}
-              {% if reflection.spanking_tool %}<span class="text-gray-500 text-xs ml-1">({{ reflection.spanking_tool }})</span>{% endif %}
-              <span class="text-gray-500 text-xs">({{ reflection.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              <span class="font-medium">{{ schedule.user.username }}</span>: {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }} ({{ schedule.status }})
+              {% if schedule.requested_tool %}<span class="text-gray-500 text-xs ml-1">({{ schedule.requested_tool }})</span>{% endif %}
+              <span class="text-gray-500 text-xs">({{ schedule.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="text-gray-600">제출된 반성문이 없습니다.</p>
+        <p class="text-gray-600">기록된 체벌/교육 일정 요청이 없습니다.</p>
       {% endif %}
-    </div>
+    </a> {# <a> 태그로 전체 블록을 감싸서 클릭 가능하게 함 #}
+
+    <!-- 캘린더 보기 링크 추가 -->
+    <a href="{{ url_for('calendar_view') }}" class="block p-6 bg-blue-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+      <h3 class="text-xl font-semibold text-blue-700 mb-2">캘린더 보기</h3>
+      <p class="text-gray-600 text-sm">기상, 벌점, 정산 일정 확인</p>
+    </a>
 
     <!-- 최근 소액결제 내역 -->
     <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}일정 연기 요청{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">체벌/교육 일정 연기 요청</h2>
+  
+  <p class="text-gray-600 text-sm mb-6">선택하신 체벌/교육 일정을 연기 요청합니다. 새로운 희망 일시와 연기 사유를 입력해주세요.</p>
+  <p class="text-gray-700 text-md font-semibold mb-4">
+    기존 요청 일시: {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}
+  </p>
+
+  <form method="post" action="{{ url_for('request_reschedule', schedule_id=schedule.id) }}" class="space-y-6">
+    <div>
+      <label for="new_requested_datetime" class="block text-sm font-medium text-gray-700 mb-1">새로운 희망 일시</label>
+      <input type="datetime-local" id="new_requested_datetime" name="new_requested_datetime" required
+             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+    <div>
+      <label for="reschedule_reason" class="block text-sm font-medium text-gray-700 mb-1">연기 사유</label>
+      <textarea id="reschedule_reason" name="reschedule_reason" rows="4" placeholder="연기 사유를 입력하세요. (예: 생리, 출장 등)" required
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
+    </div>
+
+    <button type="submit"
+            class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
+      연기 요청 제출
+    </button>
+  </form>
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+  </div>
+</div>
+{% endblock %}
+

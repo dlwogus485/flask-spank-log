@@ -15,7 +15,7 @@
             <div class="flex-1">
               <p class="text-sm text-gray-500 mb-1">
                 {{ report.timestamp.strftime('%Y-%m-%d %H:%M') }} 
-                {% if report.is_late %}<span class="text-red-500 font-bold ml-2"> (10시 이후 제출)</span>{% endif %}
+                {% if report.is_late %}<span class="text-red-600 font-bold ml-2"> (10시 이후 제출)</span>{% endif %}
               </p>
               <p class="text-gray-800 leading-relaxed">{{ report.content }}</p>
             </div>
@@ -50,9 +50,7 @@
 
         const checkboxes = document.querySelectorAll('input[name="delete_ids"]:checked');
         if (checkboxes.length === 0) {
-          window.showConfirmModal('삭제할 이력을 선택해주세요.', (confirmed) => {
-            // No action needed, just an alert modal
-          });
+          window.showConfirmModal('삭제할 이력을 선택해주세요.', () => {}); // 메시지 추가
           return;
         }
 

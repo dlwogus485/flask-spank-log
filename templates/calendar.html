@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}캘린더 보기{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">캘린더 보기</h2>
+
+  <!-- Calendar Section -->
+  <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+    <div class="flex justify-between items-center mb-4">
+      <button id="prevMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300">&lt; 이전 달</button>
+      <h3 id="currentMonthYear" class="text-xl font-semibold text-gray-800"></h3>
+      <button id="nextMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300">다음 달 &gt;</button>
+    </div>
+    <div class="grid grid-cols-7 text-center font-bold text-gray-700 mb-2">
+      <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+    </div>
+    <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+      <!-- Calendar days will be rendered here by JavaScript -->
+    </div>
+  </div>
+
+  <!-- Events for selected date -->
+  <div class="p-6 border border-gray-200 rounded-lg bg-gray-50">
+    <h3 class="text-xl font-semibold text-gray-800 mb-4" id="selectedDateEventsHeader">선택된 날짜의 기록</h3>
+    <ul id="selectedDateEventsList" class="space-y-4">
+      <li class="text-center text-gray-600 text-lg">날짜를 선택해주세요.</li>
+    </ul>
+  </div>
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+  </div>
+</div>
+
+<script>
+  // JavaScript for Calendar
+  document.addEventListener('DOMContentLoaded', () => {
+    const calendarGrid = document.getElementById('calendarGrid');
+    const currentMonthYearHeader = document.getElementById('currentMonthYear');
+    const prevMonthBtn = document.getElementById('prevMonth');
+    const nextMonthBtn = document.getElementById('nextMonth');
+    const selectedDateEventsHeader = document.getElementById('selectedDateEventsHeader');
+    const selectedDateEventsList = document.getElementById('selectedDateEventsList');
+
+    let currentMonth = new Date().getMonth();
+    let currentYear = new Date().getFullYear();
+
+    // Data from Flask (convert to a more usable format)
+    // reflectionsData는 이제 app.py에서 전달되지 않으므로 제거하거나 빈 배열로 초기화합니다.
+    const reportsData = JSON.parse('{{ reports | tojson | safe }}'); // 기상톡 데이터
+    const penaltiesData = JSON.parse('{{ penalties | tojson | safe }}'); // 벌점 데이터
+    const punishmentSchedulesData = JSON.parse('{{ punishment_schedules | tojson | safe }}'); // 체벌 일정 데이터
+    const penaltyResetHistoryData = JSON.parse('{{ penalty_reset_history | tojson | safe }}'); // 벌점 리셋 이력
+
+    const eventsByDate = {}; // { 'YYYY-MM-DD': { reports: [], penalties: [], schedules: [], resets: [] } }
+
+    function addEventToDate(dateKey, type, eventData) {
+        if (!eventsByDate[dateKey]) {
+            // reflections 배열도 초기화 시 제거
+            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [] }; // reflections 제거
+        }
+        eventsByDate[dateKey][type].push(eventData);
+    }
+
+    // Organize data by date for easy lookup
+    // reflectionsData.forEach(r => { ... }); // 이 부분도 제거
+
+    reportsData.forEach(r => {
+        const date = new Date(r.timestamp);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'reports', r);
+    });
+
+    penaltiesData.forEach(p => {
+        const date = new Date(p.timestamp); // 벌점 부과 시간 기준
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'penalties', p);
+    });
+
+    punishmentSchedulesData.forEach(s => {
+        // 승인된 일정은 approved_datetime, 아니면 requested_datetime 기준
+        const date = new Date(s.approved_datetime || s.requested_datetime); 
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'schedules', s);
+    });
+
+    penaltyResetHistoryData.forEach(pr => {
+        const date = new Date(pr.reset_date); // 리셋 날짜 기준
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0'); 
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'resets', pr);
+    });
+
+
+    function renderCalendar() {
+      calendarGrid.innerHTML = ''; // Clear previous days
+      const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const startingDayOfWeek = firstDayOfMonth.getDay(); // 0 for Sunday, 1 for Monday...
+
+      currentMonthYearHeader.textContent = `${currentYear}년 ${currentMonth + 1}월`;
+
+      // Add empty cells for days before the 1st
+      for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.classList.add('p-2', 'text-center', 'bg-gray-100', 'rounded-md');
+        calendarGrid.appendChild(emptyCell);
+      }
+
+      // Add days of the month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(currentYear, currentMonth, day);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+
+        const dayCell = document.createElement('div');
+        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'transition', 'duration-150', 'ease-in-out', 'flex', 'flex-col', 'items-center', 'justify-center', 'min-h-[60px]'); // min-h 추가
+        dayCell.textContent = day;
+        dayCell.dataset.date = dateKey; // Store full date for lookup
+
+        let hasEvent = false;
+        const dayEvents = eventsByDate[dateKey];
+        if (dayEvents) {
+            // 이벤트 유형별로 색상 표시 (우선순위는 나중에 결정)
+            if (dayEvents.schedules.some(s => s.status === 'approved')) { // 확정 일정 (가장 중요)
+                dayCell.classList.add('bg-pink-300', 'hover:bg-pink-400', 'font-semibold', 'text-pink-900');
+                hasEvent = true;
+            } else if (dayEvents.penalties.length > 0) { // 벌점
+                dayCell.classList.add('bg-red-200', 'hover:bg-red-300', 'font-semibold', 'text-red-800');
+                hasEvent = true;
+            } else if (dayEvents.resets.length > 0) { // 벌점 리셋
+                dayCell.classList.add('bg-teal-200', 'hover:bg-teal-300', 'font-semibold', 'text-teal-800');
+                hasEvent = true;
+            } else if (dayEvents.reports.length > 0) { // 기상톡
+                dayCell.classList.add('bg-green-200', 'hover:bg-green-300', 'font-semibold', 'text-green-800');
+                hasEvent = true;
+            } 
+            // else if (dayEvents.reflections.length > 0) { // 반성문 - 제거
+            //     dayCell.classList.add('bg-blue-200', 'hover:bg-blue-300', 'font-semibold', 'text-blue-800');
+            //     hasEvent = true;
+            // }
+        }
+        
+        if (!hasEvent) {
+          dayCell.classList.add('bg-white', 'hover:bg-gray-100', 'text-gray-700');
+        }
+
+        // Highlight today
+        const today = new Date();
+        if (date.toDateString() === today.toDateString()) {
+          dayCell.classList.add('ring-2', 'ring-blue-500', 'font-bold');
+        }
+
+        dayCell.addEventListener('click', () => {
+          displayEventsForDate(dateKey);
+          // Remove highlight from previously selected and add to current
+          document.querySelectorAll('.calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected', 'bg-blue-400', 'text-white'));
+          dayCell.classList.add('calendar-day-selected', 'bg-blue-400', 'text-white');
+        });
+        calendarGrid.appendChild(dayCell);
+      }
+    }
+
+    function displayEventsForDate(dateKey) {
+      selectedDateEventsHeader.textContent = `${dateKey}의 기록`;
+      selectedDateEventsList.innerHTML = ''; // Clear previous list
+
+      const events = eventsByDate[dateKey];
+      if (events) {
+        let hasContent = false;
+
+        // 체벌/교육 일정 (확정된 것 먼저)
+        if (events.schedules.length > 0) {
+            events.schedules.sort((a, b) => { // 승인된 일정을 먼저 표시
+                if (a.status === 'approved' && b.status !== 'approved') return -1;
+                if (a.status !== 'approved' && b.status === 'approved') return 1;
+                return 0;
+            });
+            hasContent = true;
+            events.schedules.forEach(s => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-pink-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-pink-200');
+                const scheduleTime = new Date(s.approved_datetime || s.requested_datetime);
+                const timeString = scheduleTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                const statusText = {
+                    'pending': '대기 중',
+                    'approved': '확정됨',
+                    'rejected': '거절됨',
+                    'rescheduled': '연기 요청됨',
+                    'completed': '완료됨'
+                }[s.status] || s.status;
+
+                listItem.innerHTML = `
+                    <p class="text-sm text-pink-700 font-semibold">일정: ${statusText} (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">요청 사유: ${s.reason}</p>
+                    ${s.requested_tool ? `<p class="text-gray-700 text-xs mt-1">희망 도구: ${s.requested_tool}</p>` : ''}
+                    ${s.admin_notes ? `<p class="text-gray-700 text-xs mt-1">관리자 메모: ${s.admin_notes}</p>` : ''}
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // 벌점
+        if (events.penalties.length > 0) {
+            hasContent = true;
+            events.penalties.forEach(p => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-red-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-red-200');
+                const timestamp = new Date(p.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-red-700 font-semibold">벌점 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">${p.penalty_type} (${p.penalty_points}점)</p>
+                    ${p.reason ? `<p class="text-gray-700 text-xs mt-1">사유: ${p.reason}</p>` : ''}
+                    ${p.rule_name ? `<p class="text-gray-700 text-xs mt-1">규칙: ${p.rule_name}</p>` : ''}
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // 벌점 리셋 이력
+        if (events.resets.length > 0) {
+            hasContent = true;
+            events.resets.forEach(pr => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-teal-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-teal-200');
+                const timestamp = new Date(pr.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-teal-700 font-semibold">벌점 리셋 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">사유: ${pr.reset_reason}</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">리셋된 벌점: ${pr.reset_points}점</p>
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // 기상톡
+        if (events.reports.length > 0) {
+            hasContent = true;
+            events.reports.forEach(r => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-green-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-green-200');
+                const timestamp = new Date(r.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-green-700 font-semibold">기상톡 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">${r.content}</p>
+                    ${r.is_late ? '<p class="text-red-600 font-bold text-xs mt-1">⚠️ 지각 제출</p>' : ''}
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // 반성문 (제거됨)
+        // if (events.reflections.length > 0) {
+        //     hasContent = true;
+        //     events.reflections.forEach(r => { ... });
+        // }
+
+        if (!hasContent) {
+            const noEntry = document.createElement('li');
+            noEntry.classList.add('text-center', 'text-gray-600', 'text-lg');
+            noEntry.textContent = '이 날짜에는 기록이 없습니다.';
+            selectedDateEventsList.appendChild(noEntry);
+        }
+      } else {
+        const noEntry = document.createElement('li');
+        noEntry.classList.add('text-center', 'text-gray-600', 'text-lg');
+        noEntry.textContent = '이 날짜에는 기록이 없습니다.';
+        selectedDateEventsList.appendChild(noEntry);
+      }
+    }
+
+    prevMonthBtn.addEventListener('click', () => {
+      currentMonth--;
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      }
+      renderCalendar();
+    });
+
+    nextMonthBtn.addEventListener('click', () => {
+      currentMonth++;
+      if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+      }
+      renderCalendar();
+    });
+
+    renderCalendar(); // Initial render
+  });
+</script>
+{% endblock %}
+

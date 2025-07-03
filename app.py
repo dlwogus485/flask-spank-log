@@ -30,6 +30,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # 데이터베이스 모델 정의
+# 각 모델은 데이터베이스 테이블의 구조를 정의합니다.
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -60,6 +61,17 @@ class Report(db.Model):
 
     def __repr__(self):
         return f'<Report {self.id} by {self.user.username}>'
+    
+    # JSON 직렬화를 위한 메서드 추가
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'content': self.content,
+            'timestamp': self.timestamp.isoformat(),
+            'is_late': self.is_late,
+            'username': self.user.username if self.user else None
+        }
 
 class Payment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -147,28 +159,122 @@ class Penalty(db.Model):
 
     def __repr__(self):
         return f'<Penalty {self.id} for {self.user.username} - {self.penalty_type}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'penalty_type': self.penalty_type,
+            'rule_name': self.rule_name,
+            'reason': self.reason,
+            'penalty_points': self.penalty_points,
+            'timestamp': self.timestamp.isoformat(),
+            'related_date': self.related_date.isoformat() if self.related_date else None,
+            'username': self.user.username if self.user else None
+        }
 
-class Reflection(db.Model):
+# Reflection 모델은 사용자 요청에 따라 제거되었습니다.
+# class Reflection(db.Model):
+#     """
+#     반성문 및 교육 요청 기록을 저장하는 모델입니다.
+#     """
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+#     reflection_content = db.Column(db.Text, nullable=False)
+#     request_education = db.Column(db.Boolean, default=False)
+#     spanking_tool = db.Column(db.String(50), nullable=True)
+#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+#     user = db.relationship('User', backref=db.backref('reflections', lazy=True))
+
+#     def __repr__(self):
+#         return f'<Reflection {self.id} by {self.user.username}>'
+    
+#     def to_dict(self):
+#         return {
+#             'id': self.id,
+#             'user_id': self.user_id,
+#             'reflection_content': self.reflection_content,
+#             'request_education': self.request_education,
+#             'spanking_tool': self.spanking_tool,
+#             'timestamp': self.timestamp.isoformat(), # datetime 객체를 ISO 형식 문자열로 변환
+#             'username': self.user.username if self.user else None # 사용자 이름 포함
+#         }
+
+class PunishmentSchedule(db.Model):
     """
-    반성문 및 교육 요청 기록을 저장하는 모델입니다.
+    체벌/교육 일정 요청 및 확정 기록을 저장하는 모델입니다.
     - id: 고유 식별자
-    - user_id: 반성문을 제출한 사용자 ID
-    - reflection_content: 반성문 내용
-    - request_education: 교육 요청 여부 (True/False)
-    - spanking_tool: 선택된 스팽킹 도구 (예: '손바닥', '패들')
-    - timestamp: 제출 시간
+    - user_id: 요청한 사용자 ID
+    - requested_datetime: 희망 일시
+    - reason: 요청 사유
+    - requested_tool: 희망 도구
+    - status: 요청 상태 ('pending', 'approved', 'rejected', 'rescheduled', 'completed')
+    - admin_notes: 관리자 메모
+    - approved_datetime: 확정 일시 (관리자 승인 시)
+    - timestamp: 요청 제출 시간
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    reflection_content = db.Column(db.Text, nullable=False)
-    request_education = db.Column(db.Boolean, default=False)
-    spanking_tool = db.Column(db.String(50), nullable=True)
+    requested_datetime = db.Column(db.DateTime, nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    requested_tool = db.Column(db.String(50), nullable=True)
+    status = db.Column(db.String(20), default='pending', nullable=False) # pending, approved, rejected, rescheduled, completed
+    admin_notes = db.Column(db.Text, nullable=True)
+    approved_datetime = db.Column(db.DateTime, nullable=True) # 관리자 승인 시 확정 일시
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
-    user = db.relationship('User', backref=db.backref('reflections', lazy=True))
+    user = db.relationship('User', backref=db.backref('punishment_schedules', lazy=True))
 
     def __repr__(self):
-        return f'<Reflection {self.id} by {self.user.username}>'
+        return f'<PunishmentSchedule {self.id} by {self.user.username} - {self.status}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'requested_datetime': self.requested_datetime.isoformat(),
+            'reason': self.reason,
+            'requested_tool': self.requested_tool,
+            'status': self.status,
+            'admin_notes': self.admin_notes,
+            'approved_datetime': self.approved_datetime.isoformat() if self.approved_datetime else None,
+            'timestamp': self.timestamp.isoformat(),
+            'username': self.user.username if self.user else None
+        }
+
+class PenaltyResetHistory(db.Model):
+    """
+    벌점 리셋 이력을 저장하는 모델입니다.
+    - id: 고유 식별자
+    - user_id: 벌점이 리셋된 사용자 ID
+    - reset_date: 리셋된 날짜
+    - reset_reason: 리셋 사유 (예: '체벌 완료', '교육 완료')
+    - reset_points: 리셋된 벌점 총점
+    - timestamp: 리셋 기록 시간
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reset_date = db.Column(db.Date, nullable=False) # 벌점이 리셋된 기준 날짜
+    reset_reason = db.Column(db.String(100), nullable=False)
+    reset_points = db.Column(db.Integer, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('penalty_reset_history', lazy=True))
+
+    def __repr__(self):
+        return f'<PenaltyResetHistory {self.id} for {self.user.username} on {self.reset_date}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'reset_date': self.reset_date.isoformat(),
+            'reset_reason': self.reset_reason,
+            'reset_points': self.reset_points,
+            'timestamp': self.timestamp.isoformat(),
+            'username': self.user.username if self.user else None
+        }
 
 
 # 데이터베이스 초기화 함수
@@ -259,8 +365,11 @@ def home():
         all_cardio_logs = Cardio.query.order_by(Cardio.timestamp.desc()).limit(10).all()
         all_weight_entries = WeightEntry.query.order_by(WeightEntry.timestamp.desc()).limit(10).all()
         all_meal_logs = MealLog.query.order_by(MealLog.timestamp.desc()).limit(10).all()
-        all_penalties = Penalty.query.order_by(Penalty.timestamp.desc()).limit(10).all() # 최근 벌점 추가
-        all_reflections = Reflection.query.order_by(Reflection.timestamp.desc()).limit(10).all() # 최근 반성문 추가
+        all_penalties = Penalty.query.order_by(Penalty.timestamp.desc()).limit(10).all() 
+        # all_reflections 제거 (사용자 요청에 따라)
+        all_punishment_schedules = PunishmentSchedule.query.filter(
+            PunishmentSchedule.status.in_(['pending', 'approved']) # 대기 중이거나 승인된 일정만 표시
+        ).order_by(PunishmentSchedule.requested_datetime.asc()).limit(10).all() 
 
         return render_template('dashboard.html',
                                reports=all_reports,
@@ -269,14 +378,15 @@ def home():
                                cardio_logs=all_cardio_logs,
                                weight_entries=all_weight_entries,
                                meal_logs=all_meal_logs,
-                               penalties=all_penalties, # 벌점 데이터 추가
-                               reflections=all_reflections) # 반성문 데이터 추가
+                               penalties=all_penalties, 
+                               # reflections 제거
+                               punishment_schedules=all_punishment_schedules) 
     else:
         # 'sub' 사용자는 기능 선택 페이지로 이동합니다.
-        # 누적 벌점 5점 이상일 때 5의 배수에서만 경고 팝업 표시
         user_id = session['user_id']
         total_penalty_points = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
-        # 0점 초과하고 5의 배수일 때만 팝업 표시
+        # 팝업 기능이 제거되었으므로 show_penalty_warning 변수는 더 이상 사용되지 않습니다.
+        # 하지만, 필요에 따라 이 값을 사용하여 다른 형태의 경고 메시지를 표시할 수 있습니다.
         show_penalty_warning = (total_penalty_points > 0 and total_penalty_points % 5 == 0)
 
         return render_template('index.html', show_penalty_warning=show_penalty_warning) 
@@ -403,18 +513,25 @@ def penalties():
     """
     사용자의 벌점 내역을 조회하고 총 벌점을 표시합니다.
     """
-    if 'user_id' not in session or session.get('role') != 'sub':
+    # DEBUG: 세션 정보 출력
+    print(f"DEBUG: Accessing /penalties. Session user_id: {session.get('user_id')}, role: {session.get('role')}")
+
+    if 'user_id' not in session: # 로그인 여부 확인
         flash("벌점 내역을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     user_id = session['user_id']
     
+    # 관리자는 모든 사용자의 벌점 내역을 볼 수 있도록
+    if session.get('role') == 'owner':
+        query = Penalty.query
+    else: # 일반 사용자는 본인 벌점만
+        query = Penalty.query.filter_by(user_id=user_id)
+    
     # 날짜 필터링 (기본: 전체, 요청 시 특정 월/일)
     filter_year = request.args.get('year', type=int)
     filter_month = request.args.get('month', type=int)
     filter_day = request.args.get('day', type=int)
-
-    query = Penalty.query.filter_by(user_id=user_id)
 
     if filter_year:
         query = query.filter(extract('year', Penalty.timestamp) == filter_year)
@@ -424,9 +541,12 @@ def penalties():
         query = query.filter(extract('day', Penalty.timestamp) == filter_day)
 
     user_penalties = query.order_by(Penalty.timestamp.desc()).all()
+    
+    # 총 벌점은 현재 로그인한 사용자의 총 벌점만 계산
+    # 관리자도 본인의 총 벌점은 본인 것만 보여주는 것이 맞다고 가정
     total_penalty_points = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
 
-    # 필터링 옵션 제공을 위한 년/월 목록
+    # 필터링 옵션 제공을 위한 년/월 목록 (모든 벌점 기록 기준)
     available_years = db.session.query(extract('year', Penalty.timestamp)).distinct().order_by(extract('year', Penalty.timestamp).desc()).all()
     available_months = db.session.query(extract('month', Penalty.timestamp)).distinct().order_by(extract('month', Penalty.timestamp)).all()
 
@@ -443,8 +563,13 @@ def penalties():
 def check_daily_weekly_penalties():
     """
     미제출된 기상톡, 주간 미달 규칙(유산소, 독후감)에 대해 벌점을 부과하는 수동 트리거입니다.
+    이 기능은 관리자(owner)와 일반 사용자(sub) 모두 사용할 수 있도록 권한을 완화합니다.
     """
-    if 'user_id' not in session or session.get('role') != 'sub':
+    # DEBUG: 세션 정보 출력
+    print(f"DEBUG: Accessing /check_daily_weekly_penalties. Session user_id: {session.get('user_id')}, role: {session.get('role')}")
+
+    # 권한 확인: 로그인되어 있으면 모두 허용
+    if 'user_id' not in session:
         flash("벌점 확인 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
@@ -570,54 +695,229 @@ def check_daily_weekly_penalties():
     return redirect(url_for('penalties'))
 
 # ---------------------------------------------------
-# 반성문 / 교육 요청 기능
+# 반성문 / 교육 요청 기능 (사용자 요청에 따라 제거)
 # ---------------------------------------------------
-@app.route('/reflection_submission', methods=['GET', 'POST'])
-def reflection_submission():
+# @app.route('/reflection_submission', methods=['GET', 'POST'])
+# def reflection_submission():
+#     pass 
+
+# @app.route('/reflection_history_list')
+# def reflection_history_list():
+#     pass 
+
+@app.route('/calendar_view') # 캘린더 뷰 라우트
+def calendar_view():
     """
-    반성문 및 교육 요청을 제출하는 페이지입니다.
-    """
-    if 'user_id' not in session or session.get('role') != 'sub':
-        flash("반성문을 제출할 권한이 없습니다.", 'error')
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        reflection_content = request.form.get('reflection_content')
-        request_education = 'request_education' in request.form # 체크박스 여부
-        spanking_tool = request.form.get('spanking_tool')
-
-        if not reflection_content:
-            flash("반성문 내용은 필수입니다.", 'error')
-            return redirect(url_for('reflection_submission'))
-        
-        new_reflection = Reflection(
-            user_id=session['user_id'],
-            reflection_content=reflection_content,
-            request_education=request_education,
-            spanking_tool=spanking_tool
-        )
-        db.session.add(new_reflection)
-        db.session.commit()
-        flash("반성문이 성공적으로 제출되었습니다.", 'success')
-        return redirect(url_for('home')) # 제출 후 홈으로 이동
-
-    spanking_tools = ['손바닥', '패들', '벨트', '회초리', '기타']
-    return render_template('reflection_submission.html', spanking_tools=spanking_tools)
-
-@app.route('/reflection_history')
-def reflection_history():
-    """
-    제출된 반성문 기록을 조회합니다. (master는 전체, sub는 본인 기록)
+    캘린더 뷰를 제공하고, 모든 기록 데이터를 JSON 형태로 전달합니다.
     """
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if session.get('role') == 'owner':
-        reflections = Reflection.query.order_by(Reflection.timestamp.desc()).all()
-    else: # sub
-        reflections = Reflection.query.filter_by(user_id=session['user_id']).order_by(Reflection.timestamp.desc()).all()
+    user_id = session['user_id']
     
-    return render_template('reflection_history.html', reflections=reflections)
+    # 현재 로그인한 사용자의 데이터만 가져오거나, master인 경우 모든 데이터 가져오기
+    if session.get('role') == 'owner':
+        reports_raw = Report.query.order_by(Report.timestamp.desc()).all()
+        penalties_raw = Penalty.query.order_by(Penalty.timestamp.desc()).all()
+        punishment_schedules_raw = PunishmentSchedule.query.order_by(PunishmentSchedule.timestamp.desc()).all()
+        penalty_reset_history_raw = PenaltyResetHistory.query.order_by(PenaltyResetHistory.timestamp.desc()).all()
+    else: # sub
+        reports_raw = Report.query.filter_by(user_id=user_id).order_by(Report.timestamp.desc()).all()
+        penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(Penalty.timestamp.desc()).all()
+        punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(PunishmentSchedule.timestamp.desc()).all()
+        penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(PenaltyResetHistory.timestamp.desc()).all()
+
+    # JSON 직렬화를 위해 to_dict() 메서드 사용
+    reports_json = [r.to_dict() for r in reports_raw]
+    penalties_json = [p.to_dict() for p in penalties_raw]
+    punishment_schedules_json = [s.to_dict() for s in punishment_schedules_raw]
+    penalty_reset_history_json = [pr.to_dict() for pr in penalty_reset_history_raw]
+
+    return render_template('calendar.html',
+                           reports=reports_json,
+                           penalties=penalties_json,
+                           punishment_schedules=punishment_schedules_json,
+                           penalty_reset_history=penalty_reset_history_json)
+
+# ---------------------------------------------------
+# 체벌 일정 관리 기능
+# ---------------------------------------------------
+@app.route('/request_punishment', methods=['GET', 'POST'])
+def request_punishment():
+    """
+    댕댕님이 체벌/교육 일정을 요청하는 페이지입니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'sub':
+        flash("일정 요청 권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        requested_datetime_str = request.form.get('requested_datetime')
+        reason = request.form.get('reason')
+        requested_tool = request.form.get('requested_tool')
+
+        try:
+            # HTML datetime-local input format: Jamboree-MM-DDTHH:MM
+            requested_datetime = datetime.strptime(requested_datetime_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            flash("유효한 날짜 및 시간을 입력해주세요.", 'error')
+            return redirect(url_for('request_punishment'))
+        
+        if not reason:
+            flash("요청 사유는 필수입니다.", 'error')
+            return redirect(url_for('request_punishment'))
+
+        new_request = PunishmentSchedule(
+            user_id=session['user_id'],
+            requested_datetime=requested_datetime,
+            reason=reason,
+            requested_tool=requested_tool,
+            status='pending'
+        )
+        db.session.add(new_request)
+        db.session.commit()
+        flash("체벌/교육 일정이 성공적으로 요청되었습니다.", 'success')
+        return redirect(url_for('home'))
+
+    spanking_tools = ['손바닥', '패들', '벨트', '회초리', '기타']
+    return render_template('request_punishment.html', spanking_tools=spanking_tools)
+
+
+@app.route('/admin_punishment_requests')
+def admin_punishment_requests():
+    """
+    관리자가 체벌/교육 요청을 확인하고 승인/거절하는 페이지입니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'owner':
+        flash("관리자 권한이 필요합니다.", 'error')
+        return redirect(url_for('login'))
+    
+    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(PunishmentSchedule.timestamp.asc()).all()
+    all_schedules = PunishmentSchedule.query.order_by(PunishmentSchedule.timestamp.desc()).all()
+
+    return render_template('admin_punishment_requests.html', 
+                           pending_requests=pending_requests,
+                           all_schedules=all_schedules)
+
+@app.route('/approve_punishment/<int:schedule_id>', methods=['POST'])
+def approve_punishment(schedule_id):
+    """
+    관리자가 체벌/교육 요청을 승인합니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'owner':
+        flash("관리자 권한이 필요합니다.", 'error')
+        return redirect(url_for('login'))
+    
+    schedule = PunishmentSchedule.query.get_or_404(schedule_id)
+    if schedule.status == 'pending':
+        schedule.status = 'approved'
+        schedule.approved_datetime = datetime.now()
+        db.session.commit()
+        flash("체벌/교육 요청이 승인되었습니다.", 'success')
+    else:
+        flash("이미 처리된 요청입니다.", 'warning')
+    return redirect(url_for('admin_punishment_requests'))
+
+@app.route('/reject_punishment/<int:schedule_id>', methods=['POST'])
+def reject_punishment(schedule_id):
+    """
+    관리자가 체벌/교육 요청을 거절합니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'owner':
+        flash("관리자 권한이 필요합니다.", 'error')
+        return redirect(url_for('login'))
+    
+    schedule = PunishmentSchedule.query.get_or_404(schedule_id)
+    if schedule.status == 'pending':
+        schedule.status = 'rejected'
+        db.session.commit()
+        flash("체벌/교육 요청이 거절되었습니다.", 'info')
+    else:
+        flash("이미 처리된 요청입니다.", 'warning')
+    return redirect(url_for('admin_punishment_requests'))
+
+@app.route('/complete_punishment/<int:schedule_id>', methods=['POST'])
+def complete_punishment(schedule_id):
+    """
+    관리자가 체벌/교육 일정을 완료 처리하고 벌점을 리셋합니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'owner':
+        flash("관리자 권한이 필요합니다.", 'error')
+        return redirect(url_for('login'))
+    
+    schedule = PunishmentSchedule.query.get_or_404(schedule_id)
+    if schedule.status == 'approved':
+        schedule.status = 'completed'
+        
+        # 벌점 리셋
+        user_id = schedule.user_id
+        total_penalty_before_reset = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
+        
+        # 해당 사용자의 모든 벌점 기록 삭제
+        Penalty.query.filter_by(user_id=user_id).delete()
+        
+        # 벌점 리셋 이력 저장
+        new_reset_history = PenaltyResetHistory(
+            user_id=user_id,
+            reset_date=date.today(),
+            reset_reason=f"체벌/교육 완료 (일정 ID: {schedule.id})",
+            reset_points=total_penalty_before_reset
+        )
+        db.session.add(new_reset_history)
+
+        db.session.commit()
+        flash(f"체벌/교육이 완료되었고, {schedule.user.username}님의 벌점 {total_penalty_before_reset}점이 리셋되었습니다.", 'success')
+    else:
+        flash("승인된 일정이 아니거나 이미 완료되었습니다.", 'warning')
+    return redirect(url_for('admin_punishment_requests'))
+
+@app.route('/request_reschedule/<int:schedule_id>', methods=['GET', 'POST'])
+def request_reschedule(schedule_id):
+    """
+    댕댕님이 체벌 일정을 연기 요청하는 페이지입니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'sub':
+        flash("일정 연기 요청 권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+    
+    schedule = PunishmentSchedule.query.get_or_404(schedule_id)
+    
+    if schedule.user_id != session['user_id']:
+        flash("본인의 일정만 연기 요청할 수 있습니다.", 'error')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        reschedule_reason = request.form.get('reschedule_reason')
+        new_requested_datetime_str = request.form.get('new_requested_datetime')
+
+        if not reschedule_reason:
+            flash("연기 사유는 필수입니다.", 'error')
+            return redirect(url_for('request_reschedule', schedule_id=schedule_id))
+        
+        try:
+            new_requested_datetime = datetime.strptime(new_requested_datetime_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            flash("유효한 새로운 날짜 및 시간을 입력해주세요.", 'error')
+            return redirect(url_for('request_reschedule', schedule_id=schedule_id))
+
+        # 기존 요청 상태를 'rescheduled'로 변경하고 새로운 요청으로 기록
+        schedule.status = 'rescheduled'
+        schedule.admin_notes = f"연기 요청됨: {reschedule_reason}" # 기존 요청에 메모 추가
+        
+        # 새로운 요청 생성 (관리자가 승인해야 최종 반영)
+        new_request = PunishmentSchedule(
+            user_id=session['user_id'],
+            requested_datetime=new_requested_datetime,
+            reason=f"일정 연기 요청 (기존 ID: {schedule.id}): {reschedule_reason}",
+            requested_tool=schedule.requested_tool,
+            status='pending' # 연기 요청은 다시 'pending' 상태로
+        )
+        db.session.add(new_request)
+        db.session.commit()
+        flash("일정 연기 요청이 성공적으로 제출되었습니다. 관리자의 승인을 기다려주세요.", 'success')
+        return redirect(url_for('home'))
+
+    return render_template('request_reschedule.html', schedule=schedule)
 
 
 # ---------------------------------------------------
@@ -805,7 +1105,7 @@ def cardio():
         Cardio.user_id == user_id,
         Cardio.date >= start_of_week,
         Cardio.date <= end_of_week
-    ).order_by(Cardio.date).all()
+    ).order_by(Cardio.timestamp.desc()).all() 
 
     weekly_count = len(weekly_cardio_logs)
     
@@ -943,5 +1243,4 @@ if __name__ == '__main__':
     init_db()
     print("Flask 서버 실행 중! http://0.0.0.0:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)
-
 

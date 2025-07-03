@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from '_macros.html' import format_currency %} {# <-- 추가 #}
+{% from '_macros.html' import format_currency %} 
 
 {% block title %}독후감 제출{% endblock %}
 
@@ -66,7 +66,7 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p class="text-center text-gray-600">제출된 독후감이 없습니다.</p>
+      <p class="text-center text-gray-600 text-lg">제출된 독후감이 없습니다.</p>
     {% endif %}
   </div>
 
