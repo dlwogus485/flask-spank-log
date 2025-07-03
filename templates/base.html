@@ -15,7 +15,7 @@
     }
     /* 커스텀 모달 스타일 */
     .modal {
-      display: none; /* 기본 숨김 (이 줄만 남기고 아래 display:flex; 줄은 제거) */
+      display: none; /* 기본 숨김 상태 유지 */
       position: fixed; /* 화면 고정 */
       z-index: 1000; /* 다른 요소 위에 표시 */
       left: 0;
@@ -24,8 +24,7 @@
       height: 100%;
       overflow: auto; /* 내용이 넘칠 경우 스크롤 */
       background-color: rgba(0,0,0,0.4); /* 반투명 배경 */
-      /* display: flex; <--- 이 줄을 제거합니다. */
-      justify-content: center;
+      justify-content: center; /* Flexbox를 사용하여 중앙 정렬 */
       align-items: center;
     }
     .modal-content {
@@ -96,7 +95,7 @@
     {% block content %}{% endblock %}
   </div>
 
-  <!-- 커스텀 모달 구조 -->
+  <!-- 일반 커스텀 모달 구조 (확인/취소) -->
   <div id="confirmModal" class="modal">
     <div class="modal-content">
       <p id="modalMessage" class="text-lg font-semibold text-gray-800 mb-4"></p>
@@ -122,7 +121,7 @@
         }, 3000); // 3초 후 숨김 시작
       });
 
-      // 커스텀 모달 로직
+      // 일반 커스텀 모달 로직 (확인/취소)
       const confirmModal = document.getElementById('confirmModal');
       const modalMessage = document.getElementById('modalMessage');
       const modalConfirmBtn = document.getElementById('modalConfirmBtn');
@@ -133,7 +132,8 @@
       window.showConfirmModal = (message, callback) => {
         modalMessage.textContent = message;
         confirmCallback = callback;
-        confirmModal.style.display = 'flex'; // 모달 표시
+        // 모달을 표시할 때만 display: flex를 적용
+        confirmModal.style.display = 'flex'; 
       };
 
       // 확인 버튼 클릭 시

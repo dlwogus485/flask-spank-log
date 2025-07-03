@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from '_macros.html' import format_currency %} 
 
 {% block title %}관리자 대시보드{% endblock %}
 
@@ -7,9 +8,9 @@
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">관리자 대시보드</h2>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- 최근 10시 가상톡 보고서 -->
+    <!-- 최근 기상톡 보고서 -->
     <div class="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-200">
-      <h3 class="text-xl font-semibold text-blue-800 mb-4">최근 10시 가상톡 보고서</h3>
+      <h3 class="text-xl font-semibold text-blue-800 mb-4">최근 기상톡 보고서</h3>
       {% if reports %}
         <ul class="space-y-3">
           {% for report in reports %}
@@ -25,6 +26,42 @@
       {% endif %}
     </div>
 
+    <!-- 최근 벌점 내역 -->
+    <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200">
+      <h3 class="text-xl font-semibold text-red-800 mb-4">최근 벌점 내역</h3>
+      {% if penalties %}
+        <ul class="space-y-3">
+          {% for penalty in penalties %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ penalty.user.username }}</span>: {{ penalty.penalty_type }} ({{ penalty.penalty_points }}점)
+              <span class="text-gray-500 text-xs">({{ penalty.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">기록된 벌점 내역이 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <!-- 최근 반성문/교육 요청 -->
+    <div class="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-200">
+      <h3 class="text-xl font-semibold text-indigo-800 mb-4">최근 반성문/교육 요청</h3>
+      {% if reflections %}
+        <ul class="space-y-3">
+          {% for reflection in reflections %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ reflection.user.username }}</span>: "{{ reflection.reflection_content | truncate(50) }}"
+              {% if reflection.request_education %}<span class="text-indigo-600 font-bold ml-1">(교육 요청)</span>{% endif %}
+              {% if reflection.spanking_tool %}<span class="text-gray-500 text-xs ml-1">({{ reflection.spanking_tool }})</span>{% endif %}
+              <span class="text-gray-500 text-xs">({{ reflection.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">제출된 반성문이 없습니다.</p>
+      {% endif %}
+    </div>
+
     <!-- 최근 소액결제 내역 -->
     <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">
       <h3 class="text-xl font-semibold text-purple-800 mb-4">최근 소액결제 내역</h3>
@@ -32,7 +69,7 @@
         <ul class="space-y-3">
           {% for payment in payments %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ payment.user.username }}</span>: {{ payment.description | default('설명 없음') }} - {{ format_currency(payment.amount | int) }}원 {# <-- 이 부분 수정 #}
+              <span class="font-medium">{{ payment.user.username }}</span>: {{ payment.description | default('설명 없음') }} - {{ format_currency(payment.amount | int) }}원
               <span class="text-gray-500 text-xs">({{ payment.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
             </li>
           {% endfor %}
@@ -60,8 +97,8 @@
     </div>
 
     <!-- 최근 유산소 기록 -->
-    <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200">
-      <h3 class="text-xl font-semibold text-red-800 mb-4">최근 유산소 기록</h3>
+    <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
+      <h3 class="text-xl font-semibold text-orange-800 mb-4">최근 유산소 기록</h3>
       {% if cardio_logs %}
         <ul class="space-y-3">
           {% for log in cardio_logs %}
@@ -101,7 +138,7 @@
           {% for log in meal_logs %}
             <li class="text-gray-700 text-sm">
               <span class="font-medium">{{ log.user.username }}</span>: {{ log.meal_type | capitalize }}
-              <span class="text-gray-500 text-xs">({{ log.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              <span class="text-gray-500 text-xs">({{ log.timestamp.strftime('%H:%M') }})</span>
             </li>
           {% endfor %}
         </ul>

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}반성문 / 교육 요청{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">반성문 / 교육 요청</h2>
+  
+  <p class="text-gray-600 text-sm mb-6">누적 벌점 초과 시 반성문을 작성하고, 필요하다면 교육 요청 및 스팽킹 도구를 선택할 수 있습니다.</p>
+
+  <form method="post" action="{{ url_for('reflection_submission') }}" class="space-y-6">
+    <div>
+      <label for="reflection_content" class="block text-sm font-medium text-gray-700 mb-1">반성문 내용</label>
+      <textarea id="reflection_content" name="reflection_content" rows="8" placeholder="반성문 내용을 작성하세요." required
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
+    </div>
+    
+    <div class="flex items-center">
+      <input type="checkbox" id="request_education" name="request_education"
+             class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+      <label for="request_education" class="ml-2 block text-sm text-gray-900">교육 요청</label>
+    </div>
+
+    <div>
+      <label for="spanking_tool" class="block text-sm font-medium text-gray-700 mb-1">스팽킹 도구 선택 (선택 사항)</label>
+      <select id="spanking_tool" name="spanking_tool"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <option value="">-- 선택 안 함 --</option>
+        {% for tool in spanking_tools %}
+          <option value="{{ tool }}">{{ tool }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit"
+            class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-300 shadow-md">
+      반성문 제출
+    </button>
+  </form>
+
+  <div class="mt-8 text-center space-x-4">
+    <a href="{{ url_for('reflection_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 반성문 이력 보기</a>
+    <a href="{{ url_for('home') }}" class="inline-block text-gray-600 hover:underline font-medium">홈으로</a>
+  </div>
+</div>
+{% endblock %}
+

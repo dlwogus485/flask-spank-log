@@ -6,27 +6,29 @@
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">보고서 제출 및 생활 관리</h2>
   
-  <!-- 10시 가상톡 (기존 보고서 제출 기능) -->
+  <!-- 기상톡 (Morning Talk) 제출 기능 -->
   <div class="mb-10 p-6 border border-gray-200 rounded-lg bg-gray-50">
-    <h3 class="text-2xl font-semibold text-gray-700 mb-4">10시 가상톡 (보고서 제출)</h3>
-    <form method="post" action="{{ url_for('submit_report') }}" class="space-y-4">
-      <div>
-        <label for="report" class="block text-sm font-medium text-gray-700 mb-1">오늘의 보고 내용</label>
-        <textarea id="report" name="report" rows="6" placeholder="오늘의 보고 내용을 작성하세요. (예: 오늘 한 일, 느낀 점 등)" required
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
-      </div>
-      <button type="submit"
-              class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
-        보고서 제출하기
-      </button>
-    </form>
+    <h3 class="text-2xl font-semibold text-gray-700 mb-4">기상톡 제출</h3>
+    <p class="text-gray-600 text-sm mb-4">매일 아침 10시 이전에 기상톡을 제출해주세요. 10시 이후 제출 시 지각 벌점이, 미제출 시 미제출 벌점이 부과됩니다.</p>
+    <a href="{{ url_for('morning_talk') }}" 
+       class="w-full inline-block text-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
+      기상톡 제출하기
+    </a>
     <div class="mt-4 text-center">
-      <a href="{{ url_for('report_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 보고서 이력 보기</a>
+      <a href="{{ url_for('morning_talk_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 기상톡 이력 보기</a>
     </div>
   </div>
 
   <!-- 새로운 기능으로 이동하는 링크들 -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <a href="{{ url_for('penalties') }}" class="block p-6 bg-red-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+      <h3 class="text-xl font-semibold text-red-700 mb-2">벌점 내역</h3>
+      <p class="text-gray-600 text-sm">벌점 기록 및 총 벌점 확인</p>
+    </a>
+    <a href="{{ url_for('reflection_submission') }}" class="block p-6 bg-indigo-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+      <h3 class="text-xl font-semibold text-indigo-700 mb-2">반성문 / 교육 요청</h3>
+      <p class="text-gray-600 text-sm">벌점 초과 시 반성문 작성 및 교육 요청</p>
+    </a>
     <a href="{{ url_for('payments') }}" class="block p-6 bg-purple-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
       <h3 class="text-xl font-semibold text-purple-700 mb-2">소액결제 관리</h3>
       <p class="text-gray-600 text-sm">월별 한도 관리 및 내역 기록</p>
@@ -35,8 +37,8 @@
       <h3 class="text-xl font-semibold text-green-700 mb-2">독후감 제출</h3>
       <p class="text-gray-600 text-sm">페이지 인증샷 및 감상문 기록</p>
     </a>
-    <a href="{{ url_for('cardio') }}" class="block p-6 bg-red-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-red-700 mb-2">유산소 운동 인증</h3>
+    <a href="{{ url_for('cardio') }}" class="block p-6 bg-orange-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+      <h3 class="text-xl font-semibold text-orange-700 mb-2">유산소 운동 인증</h3>
       <p class="text-gray-600 text-sm">주간 인증 및 사진 업로드</p>
     </a>
     <a href="{{ url_for('weight') }}" class="block p-6 bg-yellow-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">

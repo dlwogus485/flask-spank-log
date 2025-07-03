@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}기상톡 제출{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">기상톡 제출</h2>
+  
+  {% if existing_morning_talk %}
+    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-6" role="alert">
+      <strong class="font-bold">알림!</strong>
+      <span class="block sm:inline">오늘은 이미 기상톡을 제출하셨습니다.</span>
+      <p class="text-sm mt-2">제출 시간: {{ existing_morning_talk.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+      <p class="text-sm">내용: {{ existing_morning_talk.content }}</p>
+      {% if existing_morning_talk.is_late %}
+        <p class="text-sm text-red-600 font-bold mt-1">⚠️ 10시 이후 제출되어 지각 벌점이 부과되었습니다.</p>
+      {% endif %}
+    </div>
+    <div class="mt-8 text-center">
+      <a href="{{ url_for('morning_talk_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 기상톡 이력 보기</a>
+    </div>
+  {% else %}
+    <p class="text-gray-600 text-sm mb-6">매일 아침 10시 이전에 기상톡을 제출해주세요. 10시 이후 제출 시 지각 벌점이, 미제출 시 미제출 벌점이 부과됩니다.</p>
+    <form method="post" action="{{ url_for('morning_talk') }}" class="space-y-4">
+      <div>
+        <label for="morning_talk_content" class="block text-sm font-medium text-gray-700 mb-1">오늘의 기상톡 내용</label>
+        <textarea id="morning_talk_content" name="morning_talk_content" rows="6" placeholder="오늘의 기상톡 내용을 작성하세요. (예: 오늘 할 일, 다짐 등)" required
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
+      </div>
+      <button type="submit"
+              class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
+        기상톡 제출하기
+      </button>
+    </form>
+    <div class="mt-4 text-center">
+      <a href="{{ url_for('morning_talk_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 기상톡 이력 보기</a>
+    </div>
+  {% endif %}
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('home') }}" class="inline-block text-gray-600 hover:underline font-medium">홈으로</a>
+    <span class="text-gray-400 mx-2">|</span>
+    <a href="{{ url_for('logout') }}" class="inline-block text-red-600 hover:underline font-medium">로그아웃</a>
+  </div>
+</div>
+{% endblock %}
+

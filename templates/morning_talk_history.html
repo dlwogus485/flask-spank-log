@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}나의 보고서 이력{% endblock %}
+{% block title %}나의 기상톡 이력{% endblock %}
 
 {% block content %}
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
-  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">나의 보고서 이력</h2>
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">나의 기상톡 이력</h2>
 
-  <form id="deleteForm" action="{{ url_for('delete_report_selected') }}" method="post">
+  <form id="deleteForm" action="{{ url_for('delete_morning_talk_selected') }}" method="post">
     {% if reports %}
       <ul class="space-y-4">
         {% for report in reports %}
@@ -29,7 +29,7 @@
         </button>
       </div>
     {% else %}
-      <p class="text-center text-gray-600 text-lg">제출된 보고서가 없습니다.</p>
+      <p class="text-center text-gray-600 text-lg">제출된 기상톡이 없습니다.</p>
     {% endif %}
   </form>
 

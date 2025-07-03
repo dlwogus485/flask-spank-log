@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}반성문 기록{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">반성문 기록</h2>
+
+  {% if reflections %}
+    <ul class="space-y-4">
+      {% for reflection in reflections %}
+        <li class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
+          <p class="text-sm text-gray-500 mb-1">
+            <span class="font-medium text-gray-700">{{ reflection.user.username }}</span> - {{ reflection.timestamp.strftime('%Y-%m-%d %H:%M') }}
+          </p>
+          <p class="text-gray-800 leading-relaxed mb-2">{{ reflection.reflection_content }}</p>
+          {% if reflection.request_education %}
+            <p class="text-indigo-600 font-semibold text-sm">교육 요청됨</p>
+          {% endif %}
+          {% if reflection.spanking_tool %}
+            <p class="text-gray-700 text-sm">선택 도구: <span class="font-semibold">{{ reflection.spanking_tool }}</span></p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="text-center text-gray-600 text-lg">제출된 반성문이 없습니다.</p>
+  {% endif %}
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+  </div>
+</div>
+{% endblock %}
+
