@@ -133,7 +133,7 @@
       window.showConfirmModal = (message, callback) => {
         // 메시지가 없거나 비어있으면 모달을 띄우지 않습니다.
         if (!message || typeof message !== 'string' || message.trim() === '') {
-            console.warn("showConfirmModal: 메시지가 없거나 유효하지 않아 모달을 띄우지 않습니다. 호출 스택:", new Error().stack); // 디버깅을 위한 스택 트레이스 추가
+            console.warn("showConfirmModal: 메시지가 없거나 유효하지 않아 모달을 띄우지 않습니다. 호출 스택:", new Error().stack); 
             confirmModal.style.display = 'none'; // 혹시라도 떠 있다면 숨김
             return;
         }
