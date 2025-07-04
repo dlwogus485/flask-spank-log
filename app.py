@@ -13,7 +13,8 @@ app = Flask(__name__)
 
 # 시크릿 키 설정 (세션 관리에 필수)
 # 실제 서비스에서는 환경 변수 등으로 관리하는 것이 강력히 권장됩니다.
-app.secret_key = 'your_very_strong_and_secret_key_here_for_production_use' 
+# 제공된 비밀 키 값으로 업데이트되었습니다.
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'aef3b7af84893842355f346cbe73612c84817169e055fd6c') 
 
 # 데이터베이스 설정
 # SQLite 데이터베이스 파일을 'instance' 폴더에 'site.db'로 생성합니다.
