@@ -13,11 +13,9 @@ app = Flask(__name__)
 
 # 시크릿 키 설정 (세션 관리에 필수)
 # 실제 서비스에서는 환경 변수 등으로 관리하는 것이 강력히 권장됩니다.
-# 제공된 비밀 키 값으로 업데이트되었습니다.
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'aef3b7af84893842355f346cbe73612c84817169e055fd6c') 
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dbd0cfe42026f704b2829aa295c15f4c5698c9fa033ebac7') 
 
 # 데이터베이스 설정
-# SQLite 데이터베이스 파일을 'instance' 폴더에 'site.db'로 생성합니다.
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
 db = SQLAlchemy(app)
@@ -31,7 +29,6 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # 데이터베이스 모델 정의
-# 각 모델은 데이터베이스 테이블의 구조를 정의합니다.
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -48,22 +45,21 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
-class Report(db.Model):
+class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
     """
-    기상톡(Morning Talk) 보고서를 저장하는 모델입니다.
+    출근인증 보고서를 저장하는 모델입니다.
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-    is_late = db.Column(db.Boolean, default=False) # 10시 이후 제출 여부
+    is_late = db.Column(db.Boolean, default=False) # 10시 이후 제출 여부 (지각 체크박스에 따라)
 
-    user = db.relationship('User', backref=db.backref('reports', lazy=True))
+    user = db.relationship('User', backref=db.backref('commute_auth_reports', lazy=True))
 
     def __repr__(self):
-        return f'<Report {self.id} by {self.user.username}>'
+        return f'<CommuteAuthReport {self.id} by {self.user.username}>'
     
-    # JSON 직렬화를 위한 메서드 추가
     def to_dict(self):
         return {
             'id': self.id,
@@ -79,6 +75,7 @@ class Payment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Integer, nullable=False)
     description = db.Column(db.String(255), nullable=True)
+    image_filename = db.Column(db.String(120), nullable=False) # 명세서 사진 필수
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     user = db.relationship('User', backref=db.backref('payments', lazy=True))
@@ -86,25 +83,26 @@ class Payment(db.Model):
     def __repr__(self):
         return f'<Payment {self.id} by {self.user.username} - {self.amount}>'
 
-class BookReview(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    book_title = db.Column(db.String(255), nullable=False)
-    page_count = db.Column(db.Integer, nullable=True)
-    review_content = db.Column(db.Text, nullable=False)
-    image_filename = db.Column(db.String(120), nullable=True) 
-    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+# BookReview 모델 제거
+# class BookReview(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+#     book_title = db.Column(db.String(255), nullable=False)
+#     page_count = db.Column(db.Integer, nullable=True)
+#     review_content = db.Column(db.Text, nullable=False)
+#     image_filename = db.Column(db.String(120), nullable=True) 
+#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
-    user = db.relationship('User', backref=db.backref('book_reviews', lazy=True))
+#     user = db.relationship('User', backref=db.backref('book_reviews', lazy=True))
 
-    def __repr__(self):
-        return f'<BookReview {self.id} by {self.user.username} - {self.book_title}>'
+#     def __repr__(self):
+#         return f'<BookReview {self.id} by {self.user.username} - {self.book_title}>'
 
 class Cardio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, nullable=False) 
-    image_filename = db.Column(db.String(120), nullable=True) 
+    image_filename = db.Column(db.String(120), nullable=False) # 사진 업로드 필수
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False) 
 
     user = db.relationship('User', backref=db.backref('cardio_logs', lazy=True))
@@ -123,38 +121,31 @@ class WeightEntry(db.Model):
     def __repr__(self):
         return f'<WeightEntry {self.id} by {self.user.username} - {self.weight_kg}kg>'
 
-class MealLog(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    meal_type = db.Column(db.String(20), nullable=False) 
-    image_filename = db.Column(db.String(120), nullable=True) 
-    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+# MealLog 모델 제거
+# class MealLog(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+#     meal_type = db.Column(db.String(20), nullable=False) 
+#     image_filename = db.Column(db.String(120), nullable=True) 
+#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
-    user = db.relationship('User', backref=db.backref('meal_logs', lazy=True))
+#     user = db.relationship('User', backref=db.backref('meal_logs', lazy=True))
 
-    def __repr__(self):
-        return f'<MealLog {self.id} by {self.user.username} - {self.meal_type}>'
+#     def __repr__(self):
+#         return f'<MealLog {self.id} by {self.user.username} - {self.meal_type}>'
 
 class Penalty(db.Model):
     """
     벌점 내역을 저장하는 모델입니다.
-    - id: 고유 식별자
-    - user_id: 벌점을 받은 사용자 ID
-    - penalty_type: 벌점 유형 (예: '기상톡 지각', '기상톡 미제출', '소액결제 한도 초과', '금지 멘트 사용', '독후감 미달', '유산소 미달', '체중 증가')
-    - rule_name: 벌점이 부과된 규칙 이름 (예: '기상톡', '소액결제')
-    - reason: 벌점 상세 이유
-    - penalty_points: 부과된 벌점 (예: 1점)
-    - timestamp: 벌점 부과 시간
-    - related_date: 벌점과 관련된 날짜 (예: 미제출 기상톡의 날짜)
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     penalty_type = db.Column(db.String(50), nullable=False)
-    rule_name = db.Column(db.String(50), nullable=True) # 벌점이 부과된 규칙 이름
+    rule_name = db.Column(db.String(50), nullable=True) 
     reason = db.Column(db.Text, nullable=True)
     penalty_points = db.Column(db.Integer, nullable=False, default=1)
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-    related_date = db.Column(db.Date, nullable=True) # 주간/일간 벌점 계산 시 해당 날짜/주차를 기록
+    related_date = db.Column(db.Date, nullable=True) # 벌점과 관련된 날짜 (주간/월간 벌점 계산 시 해당 날짜/주차를 기록)
 
     user = db.relationship('User', backref=db.backref('penalties', lazy=True))
 
@@ -174,55 +165,18 @@ class Penalty(db.Model):
             'username': self.user.username if self.user else None
         }
 
-# Reflection 모델은 사용자 요청에 따라 제거되었습니다.
-# class Reflection(db.Model):
-#     """
-#     반성문 및 교육 요청 기록을 저장하는 모델입니다.
-#     """
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-#     reflection_content = db.Column(db.Text, nullable=False)
-#     request_education = db.Column(db.Boolean, default=False)
-#     spanking_tool = db.Column(db.String(50), nullable=True)
-#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-
-#     user = db.relationship('User', backref=db.backref('reflections', lazy=True))
-
-#     def __repr__(self):
-#         return f'<Reflection {self.id} by {self.user.username}>'
-    
-#     def to_dict(self):
-#         return {
-#             'id': self.id,
-#             'user_id': self.user_id,
-#             'reflection_content': self.reflection_content,
-#             'request_education': self.request_education,
-#             'spanking_tool': self.spanking_tool,
-#             'timestamp': self.timestamp.isoformat(), # datetime 객체를 ISO 형식 문자열로 변환
-#             'username': self.user.username if self.user else None # 사용자 이름 포함
-#         }
-
 class PunishmentSchedule(db.Model):
     """
     체벌/교육 일정 요청 및 확정 기록을 저장하는 모델입니다.
-    - id: 고유 식별자
-    - user_id: 요청한 사용자 ID
-    - requested_datetime: 희망 일시
-    - reason: 요청 사유
-    - requested_tool: 희망 도구
-    - status: 요청 상태 ('pending', 'approved', 'rejected', 'rescheduled', 'completed')
-    - admin_notes: 관리자 메모
-    - approved_datetime: 확정 일시 (관리자 승인 시)
-    - timestamp: 요청 제출 시간
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     requested_datetime = db.Column(db.DateTime, nullable=False)
     reason = db.Column(db.Text, nullable=False)
     requested_tool = db.Column(db.String(50), nullable=True)
-    status = db.Column(db.String(20), default='pending', nullable=False) # pending, approved, rejected, rescheduled, completed
+    status = db.Column(db.String(20), default='pending', nullable=False) 
     admin_notes = db.Column(db.Text, nullable=True)
-    approved_datetime = db.Column(db.DateTime, nullable=True) # 관리자 승인 시 확정 일시
+    approved_datetime = db.Column(db.DateTime, nullable=True) 
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     user = db.relationship('User', backref=db.backref('punishment_schedules', lazy=True))
@@ -247,16 +201,10 @@ class PunishmentSchedule(db.Model):
 class PenaltyResetHistory(db.Model):
     """
     벌점 리셋 이력을 저장하는 모델입니다.
-    - id: 고유 식별자
-    - user_id: 벌점이 리셋된 사용자 ID
-    - reset_date: 리셋된 날짜
-    - reset_reason: 리셋 사유 (예: '체벌 완료', '교육 완료')
-    - reset_points: 리셋된 벌점 총점
-    - timestamp: 리셋 기록 시간
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    reset_date = db.Column(db.Date, nullable=False) # 벌점이 리셋된 기준 날짜
+    reset_date = db.Column(db.Date, nullable=False) 
     reset_reason = db.Column(db.String(100), nullable=False)
     reset_points = db.Column(db.Integer, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
@@ -285,9 +233,8 @@ def init_db():
     초기 사용자 (master, ddang)를 추가합니다.
     """
     with app.app_context():
-        db.create_all() # 모든 모델에 해당하는 테이블 생성
+        db.create_all() 
 
-        # 초기 사용자 추가 (이미 존재하지 않을 경우에만)
         if not User.query.filter_by(username='master').first():
             master = User(username='master', role='owner')
             master.set_password('secret')
@@ -312,7 +259,6 @@ def save_uploaded_file(file):
     """
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        # 파일명 중복 방지를 위해 현재 시간을 파일명에 추가합니다.
         unique_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}_{filename}"
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
         return unique_filename
@@ -359,35 +305,47 @@ def home():
         return redirect(url_for('login'))
 
     if session.get('role') == 'owner':
-        # 'owner'는 모든 보고서 및 기록의 최근 10개 항목을 조회하여 대시보드에 표시합니다.
-        all_reports = Report.query.order_by(Report.timestamp.desc()).limit(10).all()
-        all_payments = Payment.query.order_by(Payment.timestamp.desc()).limit(10).all()
-        all_book_reviews = BookReview.query.order_by(BookReview.timestamp.desc()).limit(10).all()
-        all_cardio_logs = Cardio.query.order_by(Cardio.timestamp.desc()).limit(10).all()
-        all_weight_entries = WeightEntry.query.order_by(WeightEntry.timestamp.desc()).limit(10).all()
-        all_meal_logs = MealLog.query.order_by(MealLog.timestamp.desc()).limit(10).all()
-        all_penalties = Penalty.query.order_by(Penalty.timestamp.desc()).limit(10).all() 
-        # all_reflections 제거 (사용자 요청에 따라)
-        all_punishment_schedules = PunishmentSchedule.query.filter(
-            PunishmentSchedule.status.in_(['pending', 'approved']) # 대기 중이거나 승인된 일정만 표시
-        ).order_by(PunishmentSchedule.requested_datetime.asc()).limit(10).all() 
+        # 'ddang' 사용자의 ID를 조회합니다.
+        ddang_user = User.query.filter_by(username='ddang').first()
+        ddang_user_id = ddang_user.id if ddang_user else None
+
+        # ddang_user_id가 없으면 대시보드에 데이터가 없음을 표시할 수 있습니다.
+        if not ddang_user_id:
+            flash("댕댕님 계정을 찾을 수 없습니다. 데이터베이스 초기화를 확인해주세요.", 'error')
+            return render_template('dashboard.html',
+                                   reports=[], payments=[], cardio_logs=[], weight_entries=[],
+                                   penalties=[], punishment_schedules=[],
+                                   ddang_total_penalty=0, ddang_pending_punishments=0, ddang_last_commute_auth="기록 없음")
+
+        # 댕댕님 데이터만 조회하여 대시보드에 표시합니다.
+        all_reports = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(CommuteAuthReport.timestamp.desc()).limit(10).all()
+        all_payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(Payment.timestamp.desc()).limit(10).all()
+        all_cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(Cardio.timestamp.desc()).limit(10).all()
+        all_weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(WeightEntry.timestamp.desc()).limit(10).all()
+        all_penalties = Penalty.query.filter_by(user_id=ddang_user_id).order_by(Penalty.timestamp.desc()).limit(10).all()
+        all_punishment_schedules = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).filter(
+            PunishmentSchedule.status.in_(['pending', 'approved'])
+        ).order_by(PunishmentSchedule.requested_datetime.asc()).limit(10).all()
+
+        # 댕댕님 요약 정보
+        ddang_total_penalty = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=ddang_user_id).scalar() or 0
+        ddang_pending_punishments = PunishmentSchedule.query.filter_by(user_id=ddang_user_id, status='pending').count()
+        ddang_last_commute_auth_obj = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(CommuteAuthReport.timestamp.desc()).first()
+        ddang_last_commute_auth = ddang_last_commute_auth_obj.timestamp.strftime('%Y-%m-%d %H:%M') if ddang_last_commute_auth_obj else "기록 없음"
 
         return render_template('dashboard.html',
                                reports=all_reports,
                                payments=all_payments,
-                               book_reviews=all_book_reviews,
                                cardio_logs=all_cardio_logs,
                                weight_entries=all_weight_entries,
-                               meal_logs=all_meal_logs,
-                               penalties=all_penalties, 
-                               # reflections 제거
-                               punishment_schedules=all_punishment_schedules) 
+                               penalties=all_penalties,
+                               punishment_schedules=all_punishment_schedules,
+                               ddang_total_penalty=ddang_total_penalty,
+                               ddang_pending_punishments=ddang_pending_punishments,
+                               ddang_last_commute_auth=ddang_last_commute_auth)
     else:
-        # 'sub' 사용자는 기능 선택 페이지로 이동합니다.
         user_id = session['user_id']
         total_penalty_points = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
-        # 팝업 기능이 제거되었으므로 show_penalty_warning 변수는 더 이상 사용되지 않습니다.
-        # 하지만, 필요에 따라 이 값을 사용하여 다른 형태의 경고 메시지를 표시할 수 있습니다.
         show_penalty_warning = (total_penalty_points > 0 and total_penalty_points % 5 == 0)
 
         return render_template('index.html', show_penalty_warning=show_penalty_warning) 
@@ -400,111 +358,95 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 # ---------------------------------------------------
-# 기상톡 (Morning Talk) 기능
+# 출근인증 (Commute Auth) 기능
 # ---------------------------------------------------
-@app.route('/morning_talk', methods=['GET', 'POST'])
-def morning_talk():
+@app.route('/commute_auth', methods=['GET', 'POST']) 
+def commute_auth(): 
     """
-    기상톡 제출 페이지를 처리하고, 제출 시 지각 여부에 따라 벌점을 부과합니다.
+    출근인증 제출 페이지를 처리하고, 제출 시 지각 여부에 따라 벌점을 부과합니다.
     """
     if 'user_id' not in session or session.get('role') != 'sub':
-        flash("기상톡을 제출할 권한이 없습니다.", 'error')
+        flash("출근인증을 제출할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
     user_id = session['user_id']
     today = datetime.now().date()
 
-    # 이미 오늘 기상톡을 제출했는지 확인
-    existing_morning_talk = Report.query.filter(
-        Report.user_id == user_id,
-        func.date(Report.timestamp) == today
+    existing_commute_auth = CommuteAuthReport.query.filter( 
+        CommuteAuthReport.user_id == user_id,
+        func.date(CommuteAuthReport.timestamp) == today
     ).first()
 
     if request.method == 'POST':
-        if existing_morning_talk:
-            flash("오늘은 이미 기상톡을 제출하셨습니다.", 'warning')
-            return redirect(url_for('morning_talk'))
+        if existing_commute_auth:
+            flash("오늘은 이미 출근인증을 제출하셨습니다.", 'warning')
+            return redirect(url_for('commute_auth'))
 
-        talk_content = request.form.get('morning_talk_content')
+        auth_content = request.form.get('commute_auth_content') 
+        is_late_checkbox = request.form.get('is_late_checkbox') == 'on' 
         now = datetime.now()
         
-        # "용서 금지 멘트" 필터링
-        forbidden_phrase = "한번만 봐주세요"
-        if forbidden_phrase in talk_content:
-            flash(f"'{forbidden_phrase}' 문구는 사용할 수 없습니다. 다시 작성해주세요.", 'warning')
-            # 금지 멘트 사용 벌점 부과
+        is_late_penalty = False
+        # 10시 이후 제출 시 자동 지각 벌점 로직 제거
+        # 오직 '지각입니다' 체크박스 선택 시에만 지각 벌점 부과
+        if is_late_checkbox: 
+            flash("지각을 선택하셨습니다. 지각 벌점이 부과됩니다.", 'warning')
+            is_late_penalty = True
             new_penalty = Penalty(
                 user_id=user_id,
-                penalty_type='금지 멘트 사용',
-                rule_name='기상톡',
-                reason=f"기상톡 내용에 금지 멘트 '{forbidden_phrase}' 포함",
+                penalty_type='출근인증 지각', 
+                rule_name='출근인증',
+                reason=f"출근인증 지각 선택: {now.strftime('%H:%M')}",
                 penalty_points=1 
             )
             db.session.add(new_penalty)
-            db.session.commit() # 벌점 즉시 반영
-            return redirect(url_for('morning_talk'))
-
-        is_late = False
-        if now.hour >= 10: # 10시 (오전 10시) 이후
-            flash("10시 이후에 기상톡을 제출하셨습니다. 지각 벌점이 부과됩니다.", 'warning')
-            is_late = True
-            # 지각 벌점 부과
-            new_penalty = Penalty(
-                user_id=user_id,
-                penalty_type='기상톡 지각',
-                rule_name='기상톡',
-                reason=f"10시 이후 기상톡 제출: {now.strftime('%H:%M')}",
-                penalty_points=1 # 벌점 1점
-            )
-            db.session.add(new_penalty)
-
-        new_morning_talk = Report(
+        
+        new_commute_auth = CommuteAuthReport( 
             user_id=user_id,
-            content=talk_content,
+            content=auth_content,
             timestamp=now,
-            is_late=is_late
+            is_late=is_late_penalty 
         )
-        db.session.add(new_morning_talk)
+        db.session.add(new_commute_auth)
         db.session.commit()
 
-        flash("기상톡이 성공적으로 제출되었습니다!", 'success')
-        return redirect(url_for('morning_talk'))
+        flash("출근인증이 성공적으로 제출되었습니다!", 'success')
+        return redirect(url_for('commute_auth'))
     
-    # GET 요청 시 템플릿 렌더링
-    return render_template('morning_talk.html', 
-                           existing_morning_talk=existing_morning_talk) # 오늘 제출 여부 전달
+    return render_template('commute_auth.html', 
+                           existing_commute_auth=existing_commute_auth) 
 
-@app.route('/morning_talk_history')
-def morning_talk_history():
+@app.route('/commute_auth_history') 
+def commute_auth_history(): 
     """
-    현재 로그인한 사용자의 기상톡 제출 이력을 조회합니다.
+    현재 로그인한 사용자의 출근인증 이력을 조회합니다.
     """
     if 'user_id' not in session or session.get('role') != 'sub':
         flash("이력을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
-    user_reports = Report.query.filter_by(user_id=session['user_id']).order_by(Report.timestamp.desc()).all()
-    return render_template('morning_talk_history.html', reports=user_reports)
+    user_reports = CommuteAuthReport.query.filter_by(user_id=session['user_id']).order_by(CommuteAuthReport.timestamp.desc()).all() 
+    return render_template('commute_auth_history.html', reports=user_reports) 
 
-@app.route('/delete_morning_talk_selected', methods=['POST'])
-def delete_morning_talk_selected():
+@app.route('/delete_commute_auth_selected', methods=['POST']) 
+def delete_commute_auth_selected(): 
     """
-    선택된 기상톡 기록을 삭제합니다.
+    선택된 출근인증 기록을 삭제합니다.
     """
     if 'user_id' not in session or session.get('role') != 'sub':
-        flash("기상톡을 삭제할 권한이 없습니다.", 'error')
+        flash("출근인증을 삭제할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
     selected_report_ids = request.form.getlist('delete_ids') 
     
     for report_id in selected_report_ids:
-        report_to_delete = Report.query.get(report_id)
+        report_to_delete = CommuteAuthReport.query.get(report_id) 
         if report_to_delete and report_to_delete.user_id == session['user_id']:
             db.session.delete(report_to_delete)
     
     db.session.commit()
-    flash("선택된 기상톡이 삭제되었습니다.", 'success')
-    return redirect(url_for('morning_talk_history'))
+    flash("선택된 출근인증이 삭제되었습니다.", 'success')
+    return redirect(url_for('commute_auth_history')) 
 
 # ---------------------------------------------------
 # 벌점 관리 기능
@@ -514,22 +456,19 @@ def penalties():
     """
     사용자의 벌점 내역을 조회하고 총 벌점을 표시합니다.
     """
-    # DEBUG: 세션 정보 출력
     print(f"DEBUG: Accessing /penalties. Session user_id: {session.get('user_id')}, role: {session.get('role')}")
 
-    if 'user_id' not in session: # 로그인 여부 확인
+    if 'user_id' not in session: 
         flash("벌점 내역을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     user_id = session['user_id']
     
-    # 관리자는 모든 사용자의 벌점 내역을 볼 수 있도록
     if session.get('role') == 'owner':
         query = Penalty.query
-    else: # 일반 사용자는 본인 벌점만
+    else: 
         query = Penalty.query.filter_by(user_id=user_id)
     
-    # 날짜 필터링 (기본: 전체, 요청 시 특정 월/일)
     filter_year = request.args.get('year', type=int)
     filter_month = request.args.get('month', type=int)
     filter_day = request.args.get('day', type=int)
@@ -543,11 +482,8 @@ def penalties():
 
     user_penalties = query.order_by(Penalty.timestamp.desc()).all()
     
-    # 총 벌점은 현재 로그인한 사용자의 총 벌점만 계산
-    # 관리자도 본인의 총 벌점은 본인 것만 보여주는 것이 맞다고 가정
     total_penalty_points = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
 
-    # 필터링 옵션 제공을 위한 년/월 목록 (모든 벌점 기록 기준)
     available_years = db.session.query(extract('year', Penalty.timestamp)).distinct().order_by(extract('year', Penalty.timestamp).desc()).all()
     available_months = db.session.query(extract('month', Penalty.timestamp)).distinct().order_by(extract('month', Penalty.timestamp)).all()
 
@@ -563,13 +499,10 @@ def penalties():
 @app.route('/check_daily_weekly_penalties', methods=['POST'])
 def check_daily_weekly_penalties():
     """
-    미제출된 기상톡, 주간 미달 규칙(유산소, 독후감)에 대해 벌점을 부과하는 수동 트리거입니다.
-    이 기능은 관리자(owner)와 일반 사용자(sub) 모두 사용할 수 있도록 권한을 완화합니다.
+    주간 유산소 미달, 월간 소액결제 미달/초과 벌점을 부과하는 수동 트리거입니다.
     """
-    # DEBUG: 세션 정보 출력
     print(f"DEBUG: Accessing /check_daily_weekly_penalties. Session user_id: {session.get('user_id')}, role: {session.get('role')}")
 
-    # 권한 확인: 로그인되어 있으면 모두 허용
     if 'user_id' not in session:
         flash("벌점 확인 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
@@ -578,50 +511,41 @@ def check_daily_weekly_penalties():
     now = datetime.now()
     today = now.date()
     
-    # --- 1. 기상톡 미제출 벌점 확인 (오늘 날짜 기준) ---
-    # 10시가 넘었는지 확인
+    # --- 1. 출근인증 미제출 벌점 확인 (오늘 날짜 기준, 10시 이후에만) ---
     if now.hour >= 10:
-        # 오늘 기상톡을 제출했는지 확인
-        morning_talk_submitted_today = Report.query.filter(
-            Report.user_id == user_id,
-            func.date(Report.timestamp) == today
+        commute_auth_submitted_today = CommuteAuthReport.query.filter(
+            CommuteAuthReport.user_id == user_id,
+            func.date(CommuteAuthReport.timestamp) == today
         ).first()
 
-        # 오늘 미제출 벌점이 이미 부과되었는지 확인
-        penalty_already_issued = Penalty.query.filter(
+        penalty_already_issued_today = Penalty.query.filter(
             Penalty.user_id == user_id,
-            Penalty.penalty_type == '기상톡 미제출',
+            Penalty.penalty_type == '출근인증 미제출',
             func.date(Penalty.timestamp) == today
         ).first()
 
-        if not morning_talk_submitted_today and not penalty_already_issued:
-            # 오늘 기상톡을 제출하지 않았고, 아직 벌점도 부과되지 않았다면 벌점 부과
+        if not commute_auth_submitted_today and not penalty_already_issued_today:
             new_penalty = Penalty(
                 user_id=user_id,
-                penalty_type='기상톡 미제출',
-                rule_name='기상톡',
-                reason=f"오늘 기상톡 미제출 ({today.strftime('%Y-%m-%d')})",
-                penalty_points=2 # 미제출 벌점 (지각보다 높게 설정)
+                penalty_type='출근인증 미제출',
+                rule_name='출근인증',
+                reason=f"오늘 출근인증 미제출 ({today.strftime('%Y-%m-%d')})",
+                penalty_points=2 
             )
             db.session.add(new_penalty)
-            flash("오늘 기상톡 미제출로 벌점이 부과되었습니다.", 'warning')
-    else:
-        flash("아직 10시가 지나지 않았습니다. 기상톡 미제출 벌점은 10시 이후에 확인할 수 있습니다.", 'info')
+            flash("오늘 출근인증 미제출로 벌점이 부과되었습니다.", 'warning')
+    
+    # --- 2. 지난 주 유산소 운동 벌점 확인 (일주일 후 3회 미만) ---
+    last_week_end = today - timedelta(days=today.weekday() + 1) 
+    last_week_start = last_week_end - timedelta(days=6) 
 
-    # --- 2. 지난 주 유산소 운동 벌점 확인 ---
-    # 지난주 월요일부터 일요일까지의 기간을 계산
-    last_week_end = today - timedelta(days=today.weekday() + 1) # 지난주 일요일
-    last_week_start = last_week_end - timedelta(days=6) # 지난주 월요일
-
-    # 해당 주차에 대한 벌점 부과 여부 확인 (중복 방지)
-    # related_date를 지난주 월요일로 기록하여 해당 주차에 대한 벌점임을 식별
     penalty_for_last_week_cardio_issued = Penalty.query.filter(
         Penalty.user_id == user_id,
-        Penalty.penalty_type.like('유산소 미달%'),
-        Penalty.related_date == last_week_start # 해당 주차의 시작 날짜로 식별
+        Penalty.penalty_type.like('유산소 미달%'), 
+        Penalty.related_date == last_week_start 
     ).first()
 
-    if not penalty_for_last_week_cardio_issued:
+    if today.weekday() == 0 and not penalty_for_last_week_cardio_issued: # 월요일에 지난주 기록 확인
         last_week_cardio_count = Cardio.query.filter(
             Cardio.user_id == user_id,
             Cardio.date >= last_week_start,
@@ -630,68 +554,118 @@ def check_daily_weekly_penalties():
 
         penalty_points = 0
         reason = ""
-        if last_week_cardio_count == 2:
-            penalty_points = 1
-            reason = f"지난주 유산소 2회 수행 (목표 3회)"
-        elif last_week_cardio_count == 1:
-            penalty_points = 2
-            reason = f"지난주 유산소 1회 수행 (목표 3회)"
-        elif last_week_cardio_count == 0:
-            penalty_points = 3
-            reason = f"지난주 유산소 0회 수행 (목표 3회)"
-        
-        if penalty_points > 0:
-            new_penalty = Penalty(
-                user_id=user_id,
-                penalty_type=f'유산소 미달 ({last_week_cardio_count}회)',
-                rule_name='유산소',
-                reason=reason,
-                penalty_points=penalty_points,
-                related_date=last_week_start # 벌점 부과된 주차의 시작 날짜 기록
-            )
-            db.session.add(new_penalty)
-            flash(f"지난주 유산소 운동 미달로 벌점 {penalty_points}점이 부과되었습니다.", 'warning')
-
-    # --- 3. 지난 주 독후감 벌점 확인 ---
-    # 지난주 월요일부터 일요일까지의 기간을 계산
-    penalty_for_last_week_book_review_issued = Penalty.query.filter(
+        if last_week_cardio_count < 3: # 3회 미만일 경우 벌점
+            if last_week_cardio_count == 2:
+                penalty_points = 1
+                reason = f"지난주 유산소 2회 수행 (목표 3회)"
+            elif last_week_cardio_count == 1:
+                penalty_points = 2
+                reason = f"지난주 유산소 1회 수행 (목표 3회)"
+            elif last_week_cardio_count == 0:
+                penalty_points = 3
+                reason = f"지난주 유산소 0회 수행 (목표 3회)"
+            
+            if penalty_points > 0:
+                new_penalty = Penalty(
+                    user_id=user_id,
+                    penalty_type=f'유산소 미달 ({last_week_cardio_count}회)',
+                    rule_name='유산소',
+                    reason=reason,
+                    penalty_points=penalty_points,
+                    related_date=last_week_start 
+                )
+                db.session.add(new_penalty)
+                flash(f"지난주 유산소 운동 미달로 벌점 {penalty_points}점이 부과되었습니다.", 'warning')
+    
+    # --- 3. 소액결제 미달/초과 확인 (한달 후 50만원 이상이거나 미제출 시) ---
+    if today.day == 1 and not Penalty.query.filter(
         Penalty.user_id == user_id,
-        Penalty.penalty_type.like('독후감 미달%'),
-        Penalty.related_date == last_week_start # 해당 주차의 시작 날짜로 식별
-    ).first()
-
-    if not penalty_for_last_week_book_review_issued:
-        last_week_book_review_count = BookReview.query.filter(
-            BookReview.user_id == user_id,
-            BookReview.timestamp >= last_week_start,
-            BookReview.timestamp <= last_week_end + timedelta(days=1, seconds=-1) # 일요일 23:59:59까지 포함
-        ).count()
-
-        penalty_points = 0
-        reason = ""
-        if last_week_book_review_count == 2:
-            penalty_points = 1
-            reason = f"지난주 독후감 2회 제출 (목표 3회)"
-        elif last_week_book_review_count == 1:
-            penalty_points = 2
-            reason = f"지난주 독후감 1회 제출 (목표 3회)"
-        elif last_week_book_review_count == 0:
-            penalty_points = 3
-            reason = f"지난주 독후감 0회 제출 (목표 3회)"
+        Penalty.penalty_type.like('소액결제 미달%'),
+        extract('year', Penalty.related_date) == now.year,
+        extract('month', Penalty.related_date) == now.month -1 if now.month > 1 else 12 
+    ).first():
         
-        if penalty_points > 0:
+        prev_month_date = date(now.year, now.month, 1) - timedelta(days=1) 
+        prev_month = prev_month_date.month
+        prev_year = prev_month_date.year
+
+        monthly_total_prev_month = db.session.query(func.sum(Payment.amount)).filter(
+            Payment.user_id == user_id,
+            extract('year', Payment.timestamp) == prev_year,
+            extract('month', Payment.timestamp) == prev_month
+        ).scalar() or 0
+        limit = 500000 
+
+        payments_exist_prev_month = Payment.query.filter(
+            Payment.user_id == user_id,
+            extract('year', Payment.timestamp) == prev_year,
+            extract('month', Payment.timestamp) == prev_month
+        ).first()
+
+        if not payments_exist_prev_month: 
             new_penalty = Penalty(
                 user_id=user_id,
-                penalty_type=f'독후감 미달 ({last_week_book_review_count}회)',
-                rule_name='독후감',
-                reason=reason,
-                penalty_points=penalty_points,
-                related_date=last_week_start # 벌점 부과된 주차의 시작 날짜 기록
+                penalty_type='소액결제 미제출',
+                rule_name='소액결제',
+                reason=f"지난달 소액결제 기록 미제출 ({prev_year}-{prev_month})",
+                penalty_points=3, 
+                related_date=date(prev_year, prev_month, 1) 
             )
             db.session.add(new_penalty)
-            flash(f"지난주 독후감 미달로 벌점 {penalty_points}점이 부과되었습니다.", 'warning')
+            flash(f"지난달 소액결제 기록 미제출로 벌점 {new_penalty.penalty_points}점이 부과되었습니다.", 'warning')
+        elif monthly_total_prev_month > limit: 
+            new_penalty = Penalty(
+                user_id=user_id,
+                penalty_type='소액결제 미달 (한도 초과)',
+                rule_name='소액결제',
+                reason=f"지난달 소액결제 한도({limit:,.0f}원) 초과: {monthly_total_prev_month:,.0f}원",
+                penalty_points=1, 
+                related_date=date(prev_year, prev_month, 1) 
+            )
+            db.session.add(new_penalty)
+            flash(f"지난달 소액결제 한도 초과로 벌점 {new_penalty.penalty_points}점이 부과되었습니다.", 'warning')
+    
+    # --- 4. 체중 증가 벌점 확인 (1주 월~일, 2주 월~일 기준으로 다음 몸무게 보고일 언제 체중 1키로 증가하면 벌점 1점) ---
+    current_week_start = today - timedelta(days=today.weekday())
+    last_week_start_for_weight = current_week_start - timedelta(days=7)
+    week_before_last_start_for_weight = current_week_start - timedelta(days=14)
 
-    db.session.commit() # 모든 벌점 일괄 커밋
+    if today.weekday() == 0 and not Penalty.query.filter(
+        Penalty.user_id == user_id,
+        Penalty.penalty_type == '체중 증가',
+        Penalty.related_date == last_week_start_for_weight 
+    ).first():
+        
+        last_weight_last_week = WeightEntry.query.filter(
+            WeightEntry.user_id == user_id,
+            func.date(WeightEntry.timestamp) >= last_week_start_for_weight,
+            func.date(WeightEntry.timestamp) < current_week_start 
+        ).order_by(WeightEntry.timestamp.desc()).first()
+
+        last_weight_week_before_last = WeightEntry.query.filter(
+            WeightEntry.user_id == user_id,
+            func.date(WeightEntry.timestamp) >= week_before_last_start_for_weight,
+            func.date(WeightEntry.timestamp) < last_week_start_for_weight 
+        ).order_by(WeightEntry.timestamp.desc()).first()
+
+        if last_weight_last_week and last_weight_week_before_last:
+            weight_change = last_weight_last_week.weight_kg - last_weight_week_before_last.weight_kg
+            
+            if weight_change > 1.0: 
+                new_penalty = Penalty(
+                    user_id=user_id,
+                    penalty_type='체중 증가',
+                    rule_name='체중 관리',
+                    reason=f"지난 2주간 체중 {weight_change:.1f}kg 증가 (1kg 초과)",
+                    penalty_points=1, 
+                    related_date=last_week_start_for_weight 
+                )
+                db.session.add(new_penalty)
+                flash(f"경고: 지난 2주간 체중이 1kg 이상 증가하여 벌점 {new_penalty.penalty_points}점이 부과되었습니다!", 'warning')
+        elif last_weight_last_week and not last_weight_week_before_last:
+            pass 
+
+    db.session.commit() 
     flash("벌점 확인이 완료되었습니다.", 'info')
     return redirect(url_for('penalties'))
 
@@ -716,19 +690,17 @@ def calendar_view():
     
     user_id = session['user_id']
     
-    # 현재 로그인한 사용자의 데이터만 가져오거나, master인 경우 모든 데이터 가져오기
     if session.get('role') == 'owner':
-        reports_raw = Report.query.order_by(Report.timestamp.desc()).all()
+        reports_raw = CommuteAuthReport.query.order_by(CommuteAuthReport.timestamp.desc()).all() 
         penalties_raw = Penalty.query.order_by(Penalty.timestamp.desc()).all()
         punishment_schedules_raw = PunishmentSchedule.query.order_by(PunishmentSchedule.timestamp.desc()).all()
         penalty_reset_history_raw = PenaltyResetHistory.query.order_by(PenaltyResetHistory.timestamp.desc()).all()
-    else: # sub
-        reports_raw = Report.query.filter_by(user_id=user_id).order_by(Report.timestamp.desc()).all()
+    else: 
+        reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).all() 
         penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(Penalty.timestamp.desc()).all()
         punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(PunishmentSchedule.timestamp.desc()).all()
         penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(PenaltyResetHistory.timestamp.desc()).all()
 
-    # JSON 직렬화를 위해 to_dict() 메서드 사용
     reports_json = [r.to_dict() for r in reports_raw]
     penalties_json = [p.to_dict() for p in penalties_raw]
     punishment_schedules_json = [s.to_dict() for s in punishment_schedules_raw]
@@ -758,7 +730,6 @@ def request_punishment():
         requested_tool = request.form.get('requested_tool')
 
         try:
-            # HTML datetime-local input format: Jamboree-MM-DDTHH:MM
             requested_datetime = datetime.strptime(requested_datetime_str, '%Y-%m-%dT%H:%M')
         except ValueError:
             flash("유효한 날짜 및 시간을 입력해주세요.", 'error')
@@ -790,7 +761,7 @@ def admin_punishment_requests():
     관리자가 체벌/교육 요청을 확인하고 승인/거절하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 필요합니다.", 'error')
+        flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(PunishmentSchedule.timestamp.asc()).all()
@@ -806,7 +777,7 @@ def approve_punishment(schedule_id):
     관리자가 체벌/교육 요청을 승인합니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 필요합니다.", 'error')
+        flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
@@ -825,7 +796,7 @@ def reject_punishment(schedule_id):
     관리자가 체벌/교육 요청을 거절합니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 필요합니다.", 'error')
+        flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
@@ -843,7 +814,7 @@ def complete_punishment(schedule_id):
     관리자가 체벌/교육 일정을 완료 처리하고 벌점을 리셋합니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 필요합니다.", 'error')
+        flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
@@ -922,9 +893,8 @@ def request_reschedule(schedule_id):
 
 
 # ---------------------------------------------------
-# 기타 생활 습관 관리 기능 (이전과 동일)
+# 소액결제 관리 (명세서 사진 필수 추가)
 # ---------------------------------------------------
-
 @app.route('/payments', methods=['GET', 'POST'])
 def payments():
     if 'user_id' not in session or session.get('role') != 'sub':
@@ -936,12 +906,18 @@ def payments():
     if request.method == 'POST':
         amount = request.form.get('amount', type=int)
         description = request.form.get('description')
-        
+        image_file = request.files.get('image') # 명세서 사진 추가
+
         if not amount or amount <= 0:
             flash("유효한 금액을 입력해주세요.", 'error')
             return redirect(url_for('payments'))
 
-        new_payment = Payment(user_id=user_id, amount=amount, description=description)
+        image_filename = save_uploaded_file(image_file) 
+        if not image_filename: # 명세서 사진 필수
+            flash("명세서 사진은 필수이며, 허용되는 파일 형식(png, jpg, jpeg, gif)이어야 합니다.", 'error')
+            return redirect(url_for('payments'))
+
+        new_payment = Payment(user_id=user_id, amount=amount, description=description, image_filename=image_filename)
         db.session.add(new_payment)
         db.session.commit()
         flash("결제 내역이 기록되었습니다.", 'success')
@@ -1001,65 +977,10 @@ def payments():
                            monthly_total=monthly_total,
                            limit=limit)
 
-@app.route('/book_reviews', methods=['GET', 'POST'])
-def book_reviews():
-    if 'user_id' not in session or session.get('role') != 'sub':
-        flash("권한이 없습니다.", 'error')
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-
-    if request.method == 'POST':
-        book_title = request.form.get('book_title')
-        page_count = request.form.get('page_count', type=int)
-        review_content = request.form.get('review_content')
-        image_file = request.files.get('image')
-
-        image_filename = save_uploaded_file(image_file) 
-
-        if image_file and not image_filename: 
-            flash("허용되지 않는 파일 형식입니다. (png, jpg, jpeg, gif만 가능)", 'warning')
-            return redirect(url_for('book_reviews'))
-        
-        if not book_title or not review_content:
-            flash("책 제목과 감상문은 필수 입력 사항입니다.", 'error')
-            return redirect(url_for('book_reviews'))
-        
-        # 감상문 30자 이상 조건
-        if len(review_content) < 30:
-            flash("감상문은 30자 이상 작성해야 합니다. 벌점이 부과됩니다.", 'warning')
-            new_penalty = Penalty(
-                user_id=user_id,
-                penalty_type='독후감 내용 미달',
-                rule_name='독후감',
-                reason=f"감상문 30자 미만 ({len(review_content)}자)",
-                penalty_points=1 
-            )
-            db.session.add(new_penalty)
-            db.session.commit()
-
-
-        new_review = BookReview(
-            user_id=user_id,
-            book_title=book_title,
-            page_count=page_count,
-            review_content=review_content,
-            image_filename=image_filename
-        )
-        db.session.add(new_review)
-        db.session.commit()
-        flash("독후감이 성공적으로 제출되었습니다.", 'success')
-        return redirect(url_for('book_reviews'))
-
-    user_reviews = BookReview.query.filter_by(user_id=user_id).order_by(BookReview.timestamp.desc()).all()
-    
-    total_reviews = len(user_reviews)
-    total_pages_read = db.session.query(func.sum(BookReview.page_count)).filter(BookReview.user_id == user_id).scalar() or 0
-
-    return render_template('book_reviews.html', 
-                           reviews=user_reviews,
-                           total_reviews=total_reviews,
-                           total_pages_read=total_pages_read)
+# BookReview 모델 제거
+# @app.route('/book_reviews', methods=['GET', 'POST'])
+# def book_reviews():
+#     pass
 
 @app.route('/cardio', methods=['GET', 'POST'])
 def cardio():
@@ -1071,8 +992,8 @@ def cardio():
 
     if request.method == 'POST':
         cardio_date_str = request.form.get('cardio_date')
-        image_file = request.files.get('image')
-        
+        image_file = request.files.get('image') # 사진 파일
+
         try:
             cardio_date = datetime.strptime(cardio_date_str, '%Y-%m-%d').date()
         except ValueError:
@@ -1080,9 +1001,8 @@ def cardio():
             return redirect(url_for('cardio'))
 
         image_filename = save_uploaded_file(image_file) 
-
-        if image_file and not image_filename: 
-            flash("허용되지 않는 파일 형식입니다. (png, jpg, jpeg, gif만 가능)", 'warning')
+        if not image_filename: # 유산소 사진 필수
+            flash("인증 사진은 필수이며, 허용되는 파일 형식(png, jpg, jpeg, gif)이어야 합니다.", 'error')
             return redirect(url_for('cardio'))
         
         existing_log = Cardio.query.filter_by(user_id=user_id, date=cardio_date).first()
@@ -1140,65 +1060,21 @@ def weight():
         db.session.commit()
         flash("체중이 기록되었습니다.", 'success')
 
-        # 2주간 1kg 이상 증가 시 벌점 부과
-        user_weight_entries = WeightEntry.query.filter_by(user_id=user_id).order_by(WeightEntry.timestamp.asc()).all()
-        if len(user_weight_entries) >= 2:
-            two_weeks_ago = datetime.now() - timedelta(weeks=2)
-            recent_entries = WeightEntry.query.filter(
-                WeightEntry.user_id == user_id,
-                WeightEntry.timestamp >= two_weeks_ago
-            ).order_by(WeightEntry.timestamp.asc()).all()
-            
-            if len(recent_entries) >= 2:
-                first_weight_in_period = recent_entries[0].weight_kg
-                last_weight_in_period = recent_entries[-1].weight_kg
-                
-                weight_change = last_weight_in_period - first_weight_in_period
-                
-                if weight_change > 1.0: 
-                    # 이미 해당 날짜에 벌점이 부과되었는지 확인 (하루에 한 번만)
-                    penalty_already_issued = Penalty.query.filter(
-                        Penalty.user_id == user_id,
-                        Penalty.penalty_type == '체중 증가',
-                        func.date(Penalty.timestamp) == date.today()
-                    ).first()
-                    if not penalty_already_issued:
-                        new_penalty = Penalty(
-                            user_id=user_id,
-                            penalty_type='체중 증가',
-                            rule_name='체중 관리',
-                            reason=f"최근 2주간 체중 {weight_change:.1f}kg 증가 (1kg 초과)",
-                            penalty_points=5 # 높은 벌점
-                        )
-                        db.session.add(new_penalty)
-                        db.session.commit()
-                        flash("경고: 최근 2주간 체중이 1kg 이상 증가하여 벌점이 부과되었습니다!", 'error')
-
-
+        # 2주간 1kg 이상 증가 시 벌점 로직은 check_daily_weekly_penalties로 이동
         return redirect(url_for('weight'))
+
+    today = datetime.now().date()
+    start_of_week = today - timedelta(days=today.weekday()) 
+    end_of_week = start_of_week + timedelta(days=6)
 
     user_weight_entries = WeightEntry.query.filter_by(user_id=user_id).order_by(WeightEntry.timestamp.asc()).all()
     
     labels = [entry.timestamp.strftime('%m-%d') for entry in user_weight_entries]
     data = [entry.weight_kg for entry in user_weight_entries]
     
-    warning_message = None
-    if len(user_weight_entries) >= 2:
-        two_weeks_ago = datetime.now() - timedelta(weeks=2)
-        recent_entries = WeightEntry.query.filter(
-            WeightEntry.user_id == user_id,
-            WeightEntry.timestamp >= two_weeks_ago
-        ).order_by(WeightEntry.timestamp.asc()).all()
-        
-        if len(recent_entries) >= 2:
-            first_weight_in_period = recent_entries[0].weight_kg
-            last_weight_in_period = recent_entries[-1].weight_kg
-            
-            weight_change = last_weight_in_period - first_weight_in_period
-            
-            if weight_change > 1.0: 
-                warning_message = f"경고: 최근 2주간 체중이 {weight_change:.1f}kg 증가하여 1kg 초과 기준을 넘었습니다."
-                flash(warning_message, 'warning')
+    # 체중 보고일 및 벌점 관련 문구 추가 (매주 월요일 기준)
+    next_report_day = today + timedelta(days=(0 - today.weekday() + 7) % 7) # 다음 월요일
+    warning_message = f"다음 몸무게 보고일은 {next_report_day.strftime('%Y-%m-%d')}입니다. 2주 전 대비 체중 1kg 이상 증가 시 벌점 1점이 부과됩니다."
 
     return render_template('weight.html', 
                            weight_entries=user_weight_entries,
@@ -1206,42 +1082,17 @@ def weight():
                            chart_data=json.dumps(data),
                            warning_message=warning_message)
 
-@app.route('/meal_logs', methods=['GET', 'POST'])
-def meal_logs():
-    if 'user_id' not in session or session.get('role') != 'sub':
-        flash("권한이 없습니다.", 'error')
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-
-    if request.method == 'POST':
-        meal_type = request.form.get('meal_type')
-        image_file = request.files.get('image')
-
-        if meal_type not in ['breakfast', 'lunch', 'dinner']:
-            flash("유효한 끼니 구분을 선택해주세요.", 'error')
-            return redirect(url_for('meal_logs'))
-
-        image_filename = save_uploaded_file(image_file) 
-
-        if not image_filename: 
-            flash("식사 인증샷은 필수이며, 허용되는 파일 형식(png, jpg, jpeg, gif)이어야 합니다.", 'error')
-            return redirect(url_for('meal_logs'))
-
-        new_meal_log = MealLog(user_id=user_id, meal_type=meal_type, image_filename=image_filename)
-        db.session.add(new_meal_log)
-        db.session.commit()
-        flash(f"{meal_type} 식사 인증이 기록되었습니다.", 'success')
-        return redirect(url_for('meal_logs'))
-
-    user_meal_logs = MealLog.query.filter_by(user_id=user_id).order_by(MealLog.timestamp.desc()).all()
-    
-    return render_template('meal_logs.html', meal_logs=user_meal_logs)
+# MealLog 모델 제거
+# @app.route('/meal_logs', methods=['GET', 'POST'])
+# def meal_logs():
+#     pass
 
 
 # 애플리케이션 실행 진입점
 if __name__ == '__main__':
     init_db()
-    print("Flask 서버 실행 중! http://0.0.0.0:5000")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # 프로덕션 환경에서는 debug=False로 설정해야 합니다.
+    # app.run(debug=True, host='0.0.0.0', port=5000) 
+    # Gunicorn과 Systemd를 통해 실행되므로 이 부분은 주석 처리합니다.
+
 

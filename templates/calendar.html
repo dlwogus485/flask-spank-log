@@ -48,8 +48,7 @@
     let currentYear = new Date().getFullYear();
 
     // Data from Flask (convert to a more usable format)
-    // reflectionsData는 이제 app.py에서 전달되지 않으므로 제거하거나 빈 배열로 초기화합니다.
-    const reportsData = JSON.parse('{{ reports | tojson | safe }}'); // 기상톡 데이터
+    const reportsData = JSON.parse('{{ reports | tojson | safe }}'); // 출근인증 데이터
     const penaltiesData = JSON.parse('{{ penalties | tojson | safe }}'); // 벌점 데이터
     const punishmentSchedulesData = JSON.parse('{{ punishment_schedules | tojson | safe }}'); // 체벌 일정 데이터
     const penaltyResetHistoryData = JSON.parse('{{ penalty_reset_history | tojson | safe }}'); // 벌점 리셋 이력
@@ -58,15 +57,12 @@
 
     function addEventToDate(dateKey, type, eventData) {
         if (!eventsByDate[dateKey]) {
-            // reflections 배열도 초기화 시 제거
-            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [] }; // reflections 제거
+            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [] };
         }
         eventsByDate[dateKey][type].push(eventData);
     }
 
     // Organize data by date for easy lookup
-    // reflectionsData.forEach(r => { ... }); // 이 부분도 제거
-
     reportsData.forEach(r => {
         const date = new Date(r.timestamp);
         const yyyy = date.getFullYear();
@@ -146,14 +142,10 @@
             } else if (dayEvents.resets.length > 0) { // 벌점 리셋
                 dayCell.classList.add('bg-teal-200', 'hover:bg-teal-300', 'font-semibold', 'text-teal-800');
                 hasEvent = true;
-            } else if (dayEvents.reports.length > 0) { // 기상톡
+            } else if (dayEvents.reports.length > 0) { // 출근인증
                 dayCell.classList.add('bg-green-200', 'hover:bg-green-300', 'font-semibold', 'text-green-800');
                 hasEvent = true;
             } 
-            // else if (dayEvents.reflections.length > 0) { // 반성문 - 제거
-            //     dayCell.classList.add('bg-blue-200', 'hover:bg-blue-300', 'font-semibold', 'text-blue-800');
-            //     hasEvent = true;
-            // }
         }
         
         if (!hasEvent) {
@@ -250,7 +242,7 @@
             });
         }
 
-        // 기상톡
+        // 출근인증
         if (events.reports.length > 0) {
             hasContent = true;
             events.reports.forEach(r => {
@@ -259,19 +251,13 @@
                 const timestamp = new Date(r.timestamp);
                 const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
                 listItem.innerHTML = `
-                    <p class="text-sm text-green-700 font-semibold">기상톡 (${timeString})</p>
+                    <p class="text-sm text-green-700 font-semibold">출근인증 (${timeString})</p>
                     <p class="text-gray-800 leading-relaxed text-sm mt-1">${r.content}</p>
                     ${r.is_late ? '<p class="text-red-600 font-bold text-xs mt-1">⚠️ 지각 제출</p>' : ''}
                 `;
                 selectedDateEventsList.appendChild(listItem);
             });
         }
-
-        // 반성문 (제거됨)
-        // if (events.reflections.length > 0) {
-        //     hasContent = true;
-        //     events.reflections.forEach(r => { ... });
-        // }
 
         if (!hasContent) {
             const noEntry = document.createElement('li');

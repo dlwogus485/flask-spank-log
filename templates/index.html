@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}보고서 제출 및 관리{% endblock %}
+{% block title %}보고서 제출 및 생활 관리{% endblock %}
 
 {% block content %}
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">보고서 제출 및 생활 관리</h2>
   
-  <!-- 기상톡 (Morning Talk) 제출 기능 -->
+  <!-- 출근인증 제출 기능 -->
   <div class="mb-10 p-6 border border-gray-200 rounded-lg bg-gray-50">
-    <h3 class="text-2xl font-semibold text-gray-700 mb-4">기상톡 제출</h3>
-    <p class="text-gray-600 text-sm mb-4">매일 아침 10시 이전에 기상톡을 제출해주세요. 10시 이후 제출 시 지각 벌점이, 미제출 시 미제출 벌점이 부과됩니다.</p>
-    <a href="{{ url_for('morning_talk') }}" 
+    <h3 class="text-2xl font-semibold text-gray-700 mb-4">출근인증 제출</h3>
+    <p class="text-gray-600 text-sm mb-4">매일 아침 10시 이전에 출근인증을 제출해주세요. 10시 이후 제출 시 지각 벌점이, 미제출 시 미제출 벌점이 부과됩니다.</p>
+    <a href="{{ url_for('commute_auth') }}" 
        class="w-full inline-block text-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
-      기상톡 제출하기
+      출근인증 제출하기
     </a>
     <div class="mt-4 text-center">
-      <a href="{{ url_for('morning_talk_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 기상톡 이력 보기</a>
+      <a href="{{ url_for('commute_auth_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 출근인증 이력 보기</a>
     </div>
   </div>
 
@@ -25,10 +25,7 @@
       <h3 class="text-xl font-semibold text-red-700 mb-2">벌점 내역</h3>
       <p class="text-gray-600 text-sm">벌점 기록 및 총 벌점 확인</p>
     </a>
-    {# <a href="{{ url_for('reflection_submission') }}" class="block p-6 bg-indigo-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1"> #}
-    {#   <h3 class="text-xl font-semibold text-indigo-700 mb-2">반성문 / 교육 요청</h3> #}
-    {#   <p class="text-gray-600 text-sm">벌점 초과 시 반성문 작성 및 교육 요청</p> #}
-    {# </a> #}
+    {# 반성문/교육 요청 링크 제거됨 #}
     <a href="{{ url_for('request_punishment') }}" class="block p-6 bg-pink-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
       <h3 class="text-xl font-semibold text-pink-700 mb-2">체벌/교육 일정 요청</h3>
       <p class="text-gray-600 text-sm">희망 일시 및 도구 선택</p>
@@ -41,10 +38,7 @@
       <h3 class="text-xl font-semibold text-purple-700 mb-2">소액결제 관리</h3>
       <p class="text-gray-600 text-sm">월별 한도 관리 및 내역 기록</p>
     </a>
-    <a href="{{ url_for('book_reviews') }}" class="block p-6 bg-green-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-green-700 mb-2">독후감 제출</h3>
-      <p class="text-gray-600 text-sm">페이지 인증샷 및 감상문 기록</p>
-    </a>
+    {# 독후감 제출 링크 제거됨 #}
     <a href="{{ url_for('cardio') }}" class="block p-6 bg-orange-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
       <h3 class="text-xl font-semibold text-orange-700 mb-2">유산소 운동 인증</h3>
       <p class="text-gray-600 text-sm">주간 인증 및 사진 업로드</p>
@@ -53,10 +47,7 @@
       <h3 class="text-xl font-semibold text-yellow-700 mb-2">체중 관리</h3>
       <p class="text-gray-600 text-sm">주간 체중 기록 및 그래프</p>
     </a>
-    <a href="{{ url_for('meal_logs') }}" class="block p-6 bg-teal-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-teal-700 mb-2">식사 인증</h3>
-      <p class="text-gray-600 text-sm">끼니별 인증샷 제출</p>
-    </a>
+    {# 식사 인증 링크 제거됨 #}
   </div>
 
   <div class="mt-10 text-center">

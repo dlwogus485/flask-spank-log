@@ -7,77 +7,93 @@
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">관리자 대시보드</h2>
 
+  <!-- 댕댕님 요약 정보 -->
+  <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-100 shadow-sm">
+    <h3 class="text-xl font-semibold text-gray-800 mb-4">댕댕님 요약 정보 (ddang)</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-gray-700">
+      <div>
+        <p class="text-sm font-medium">현재 총 벌점:</p>
+        <p class="text-lg font-bold text-red-700">{{ ddang_total_penalty }}점</p>
+      </div>
+      <div>
+        <p class="text-sm font-medium">대기 중인 체벌/교육 일정:</p>
+        <p class="text-lg font-bold text-pink-700">{{ ddang_pending_punishments }}건</p>
+      </div>
+      <div>
+        <p class="text-sm font-medium">마지막 출근인증:</p>
+        <p class="text-lg font-bold text-blue-700">{{ ddang_last_commute_auth }}</p>
+      </div>
+    </div>
+    <div class="mt-6 flex flex-wrap justify-center gap-4">
+      <a href="{{ url_for('penalties') }}" class="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition duration-300 shadow-md text-sm">벌점 내역</a>
+      <a href="{{ url_for('commute_auth_history') }}" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition duration-300 shadow-md text-sm">출근인증 이력</a>
+      <a href="{{ url_for('admin_punishment_requests') }}" class="px-4 py-2 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition duration-300 shadow-md text-sm">체벌/교육 관리</a>
+      <a href="{{ url_for('calendar_view') }}" class="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition duration-300 shadow-md text-sm">캘린더 보기</a>
+    </div>
+  </div>
+
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    <!-- 최근 기상톡 보고서 -->
+    <!-- 최근 출근인증 보고서 -->
     <div class="bg-blue-50 p-6 rounded-xl shadow-sm border border-blue-200">
-      <h3 class="text-xl font-semibold text-blue-800 mb-4">최근 기상톡 보고서</h3>
+      <h3 class="text-xl font-semibold text-blue-800 mb-4">최근 출근인증 보고서 (ddang)</h3>
       {% if reports %}
         <ul class="space-y-3">
           {% for report in reports %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ report.user.username }}</span>: {{ report.content | truncate(50) }}
-              <span class="text-gray-500 text-xs">({{ report.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              <span class="font-medium">{{ report.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>: {{ report.content | truncate(50) }}
               {% if report.is_late %}<span class="text-red-500 font-bold ml-1">(지각)</span>{% endif %}
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="text-gray-600">제출된 보고서가 없습니다.</p>
+        <p class="text-gray-600">제출된 출근인증이 없습니다.</p>
       {% endif %}
     </div>
 
     <!-- 최근 벌점 내역 -->
-    <a href="{{ url_for('penalties') }}" class="block p-6 bg-red-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1"> {# <-- 이 부분 수정: a 태그로 감쌈 #}
-      <h3 class="text-xl font-semibold text-red-800 mb-4">최근 벌점 내역</h3>
+    <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200">
+      <h3 class="text-xl font-semibold text-red-800 mb-4">최근 벌점 내역 (ddang)</h3>
       {% if penalties %}
         <ul class="space-y-3">
           {% for penalty in penalties %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ penalty.user.username }}</span>: {{ penalty.penalty_type }} ({{ penalty.penalty_points }}점)
-              <span class="text-gray-500 text-xs">({{ penalty.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              <span class="font-medium">{{ penalty.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>: {{ penalty.penalty_type }} ({{ penalty.penalty_points }}점)
             </li>
           {% endfor %}
         </ul>
       {% else %}
         <p class="text-gray-600">기록된 벌점 내역이 없습니다.</p>
       {% endif %}
-    </a> {# <-- a 태그 닫음 #}
-
-    {# <!-- 최근 반성문/교육 요청 (섹션 제거됨) --> #}
+    </div>
 
     <!-- 최근 체벌/교육 일정 요청 -->
-    <a href="{{ url_for('admin_punishment_requests') }}" class="block p-6 bg-pink-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-pink-800 mb-4">최근 체벌/교육 일정 요청</h3>
+    <div class="bg-pink-50 p-6 rounded-xl shadow-sm border border-pink-200">
+      <h3 class="text-xl font-semibold text-pink-800 mb-4">최근 체벌/교육 일정 (ddang)</h3>
       {% if punishment_schedules %}
         <ul class="space-y-3">
           {% for schedule in punishment_schedules %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ schedule.user.username }}</span>: {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }} ({{ schedule.status }})
+              <span class="font-medium">{{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}</span>: {{ schedule.reason | truncate(50) }} ({{ schedule.status }})
               {% if schedule.requested_tool %}<span class="text-gray-500 text-xs ml-1">({{ schedule.requested_tool }})</span>{% endif %}
-              <span class="text-gray-500 text-xs">({{ schedule.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
             </li>
           {% endfor %}
         </ul>
       {% else %}
-        <p class="text-gray-600">기록된 체벌/교육 일정 요청이 없습니다.</p>
+        <p class="text-gray-600">기록된 체벌/교육 일정이 없습니다.</p>
       {% endif %}
-    </a> {# <a> 태그로 전체 블록을 감싸서 클릭 가능하게 함 #}
-
-    <!-- 캘린더 보기 링크 추가 -->
-    <a href="{{ url_for('calendar_view') }}" class="block p-6 bg-blue-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-blue-700 mb-2">캘린더 보기</h3>
-      <p class="text-gray-600 text-sm">기상, 벌점, 정산 일정 확인</p>
-    </a>
+    </div>
 
     <!-- 최근 소액결제 내역 -->
     <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">
-      <h3 class="text-xl font-semibold text-purple-800 mb-4">최근 소액결제 내역</h3>
+      <h3 class="text-xl font-semibold text-purple-800 mb-4">최근 소액결제 내역 (ddang)</h3>
       {% if payments %}
         <ul class="space-y-3">
           {% for payment in payments %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ payment.user.username }}</span>: {{ payment.description | default('설명 없음') }} - {{ format_currency(payment.amount | int) }}원
-              <span class="text-gray-500 text-xs">({{ payment.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              <span class="font-medium">{{ payment.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>: {{ payment.description | default('설명 없음') }} - {{ format_currency(payment.amount | int) }}원
+              {% if payment.image_filename %}
+                <a href="{{ url_for('uploaded_file', filename=payment.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-2 text-xs">명세서 다운로드</a>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>
@@ -86,32 +102,17 @@
       {% endif %}
     </div>
 
-    <!-- 최근 독후감 -->
-    <div class="bg-green-50 p-6 rounded-xl shadow-sm border border-green-200">
-      <h3 class="text-xl font-semibold text-green-800 mb-4">최근 독후감</h3>
-      {% if book_reviews %}
-        <ul class="space-y-3">
-          {% for review in book_reviews %}
-            <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ review.user.username }}</span>: "{{ review.book_title }}" ({{ review.page_count }}p)
-              <span class="text-gray-500 text-xs">({{ review.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-600">제출된 독후감이 없습니다.</p>
-      {% endif %}
-    </div>
-
-    <!-- 최근 유산소 기록 -->
+    <!-- 최근 유산소 운동 인증 -->
     <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
-      <h3 class="text-xl font-semibold text-orange-800 mb-4">최근 유산소 기록</h3>
+      <h3 class="text-xl font-semibold text-orange-800 mb-4">최근 유산소 운동 인증 (ddang)</h3>
       {% if cardio_logs %}
         <ul class="space-y-3">
           {% for log in cardio_logs %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ log.user.username }}</span>: {{ log.date.strftime('%Y-%m-%d') }}
-              <span class="text-gray-500 text-xs">({{ log.timestamp.strftime('%H:%M') }})</span>
+              <span class="font-medium">{{ log.date.strftime('%Y-%m-%d') }}</span>: 기록됨
+              {% if log.image_filename %}
+                <a href="{{ url_for('uploaded_file', filename=log.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-2 text-xs">사진 다운로드</a>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>
@@ -122,13 +123,12 @@
 
     <!-- 최근 체중 기록 -->
     <div class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
-      <h3 class="text-xl font-semibold text-yellow-800 mb-4">최근 체중 기록</h3>
+      <h3 class="text-xl font-semibold text-yellow-800 mb-4">최근 체중 기록 (ddang)</h3>
       {% if weight_entries %}
         <ul class="space-y-3">
           {% for entry in weight_entries %}
             <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ entry.user.username }}</span>: {{ entry.weight_kg }}kg
-              <span class="text-gray-500 text-xs">({{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }})</span>
+              <span class="font-medium">{{ entry.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>: {{ entry.weight_kg }}kg
             </li>
           {% endfor %}
         </ul>
@@ -137,22 +137,6 @@
       {% endif %}
     </div>
 
-    <!-- 최근 식사 인증 -->
-    <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200">
-      <h3 class="text-xl font-semibold text-teal-800 mb-4">최근 식사 인증</h3>
-      {% if meal_logs %}
-        <ul class="space-y-3">
-          {% for log in meal_logs %}
-            <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ log.user.username }}</span>: {{ log.meal_type | capitalize }}
-              <span class="text-gray-500 text-xs">({{ log.timestamp.strftime('%H:%M') }})</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-600">기록된 식사 인증이 없습니다.</p>
-      {% endif %}
-    </div>
   </div>
 
   <div class="mt-10 text-center">
