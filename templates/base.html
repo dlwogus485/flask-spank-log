@@ -15,7 +15,7 @@
     }
     /* 커스텀 모달 스타일 */
     .modal {
-      display: none !important; /* 기본 숨김을 강제합니다! */
+      display: none; /* 기본 숨김 상태 유지 */
       position: fixed; /* 화면 고정 */
       z-index: 1000; /* 다른 요소 위에 표시 */
       left: 0;
@@ -26,6 +26,10 @@
       background-color: rgba(0,0,0,0.4); /* 반투명 배경 */
       justify-content: center;
       align-items: center;
+    }
+    /* 모달을 표시할 때 추가할 클래스 */
+    .modal.show-modal {
+      display: flex; /* JavaScript로 이 클래스를 추가하여 모달을 표시 */
     }
     .modal-content {
       background-color: #fefefe;
@@ -136,18 +140,18 @@
         // 메시지가 없거나 비어있으면 모달을 띄우지 않습니다.
         if (!message || typeof message !== 'string' || message.trim() === '') {
             console.warn("showConfirmModal: 메시지가 없거나 유효하지 않아 모달을 띄우지 않습니다. 호출 스택:", new Error().stack); 
-            confirmModal.style.display = 'none'; // 혹시라도 떠 있다면 숨김
+            confirmModal.classList.remove('show-modal'); // 혹시라도 떠 있다면 숨김
             return;
         }
         modalMessage.textContent = message;
         confirmCallback = callback;
-        // 모달을 표시할 때만 display: flex를 적용
-        confirmModal.style.display = 'flex'; 
+        // 'show-modal' 클래스를 추가하여 모달을 표시
+        confirmModal.classList.add('show-modal'); 
       };
 
       // 확인 버튼 클릭 시
       modalConfirmBtn.onclick = () => {
-        confirmModal.style.display = 'none'; // 모달 숨김
+        confirmModal.classList.remove('show-modal'); // 모달 숨김
         if (confirmCallback) {
           confirmCallback(true); // 콜백 함수에 true 전달
         }
@@ -155,7 +159,7 @@
 
       // 취소 버튼 클릭 시
       modalCancelBtn.onclick = () => {
-        confirmModal.style.display = 'none'; // 모달 숨김
+        confirmModal.classList.remove('show-modal'); // 모달 숨김
         if (confirmCallback) {
           confirmCallback(false); // 콜백 함수에 false 전달
         }
@@ -165,7 +169,7 @@
       window.onclick = (event) => {
         // 모달 자체가 아닌 다른 요소를 클릭했을 때만 닫기
         if (event.target == confirmModal) { 
-          confirmModal.style.display = 'none';
+          confirmModal.classList.remove('show-modal');
           if (confirmCallback) {
             confirmCallback(false);
           }
@@ -175,7 +179,4 @@
   </script>
 </body>
 </html>
-{% macro format_currency(value) %}
-    {{ "{:,.0f}".format(value) }}
-{% endmacro %}
 

@@ -4,7 +4,7 @@
 {% block title %}관리자 대시보드{% endblock %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mxㅁ-auto">
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">관리자 대시보드</h2>
 
   <!-- 댕댕님 요약 정보 -->
@@ -102,7 +102,7 @@
       {% endif %}
     </div>
 
-    <!-- 유산소 운동 인증 -->
+    <!-- 최근 유산소 운동 인증 -->
     <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
       <h3 class="text-xl font-semibold text-orange-800 mb-4">최근 유산소 운동 인증 (ddang)</h3>
       {% if cardio_logs %}
@@ -134,6 +134,25 @@
         </ul>
       {% else %}
         <p class="text-gray-600">기록된 체중이 없습니다.</p>
+      {% endif %}
+    </div>
+
+    <!-- 최근 출근 시간표 업로드 내역 -->
+    <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200">
+      <h3 class="text-xl font-semibold text-teal-800 mb-4">최근 출근 시간표 업로드 내역 (ddang)</h3>
+      {% if commute_schedules %}
+        <ul class="space-y-3">
+          {% for schedule in commute_schedules %}
+            <li class="text-gray-700 text-sm">
+              <span class="font-medium">{{ schedule.week_start_date.strftime('%Y-%m-%d') }} 주차</span>: 업로드됨
+              {% if schedule.image_filename %}
+                <a href="{{ url_for('uploaded_file', filename=schedule.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-2 text-xs">시간표 다운로드</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="text-gray-600">업로드된 출근 시간표가 없습니다.</p>
       {% endif %}
     </div>
 

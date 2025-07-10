@@ -15,7 +15,8 @@
             <div class="flex-1">
               <p class="text-sm text-gray-500 mb-1">
                 {{ report.timestamp.strftime('%Y-%m-%d %H:%M') }} 
-                {% if report.is_late %}<span class="text-red-600 font-bold ml-2"> (10시 이후 제출)</span>{% endif %}
+                {% if report.is_late %}<span class="text-red-600 font-bold ml-2"> (지각)</span>{% endif %}
+                {% if report.is_holiday %}<span class="text-green-600 font-bold ml-2"> (휴무)</span>{% endif %}
               </p>
               <p class="text-gray-800 leading-relaxed">{{ report.content }}</p>
             </div>
@@ -41,25 +42,45 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('DEBUG: DOMContentLoaded fired in commute_auth_history.html'); // DEBUG
     const deleteButton = document.getElementById('deleteButton');
     const deleteForm = document.getElementById('deleteForm');
 
     if (deleteButton) {
+      console.log('DEBUG: deleteButton found.'); // DEBUG
       deleteButton.addEventListener('click', (event) => {
         event.preventDefault(); // 기본 폼 제출 방지
+        console.log('DEBUG: Delete button clicked.'); // DEBUG
 
         const checkboxes = document.querySelectorAll('input[name="delete_ids"]:checked');
+        console.log('DEBUG: Checked checkboxes count:', checkboxes.length); // DEBUG
+
         if (checkboxes.length === 0) {
-          window.showConfirmModal('삭제할 이력을 선택해주세요.', function() {}); 
+          console.log('DEBUG: No checkboxes selected. Showing alert modal.'); // DEBUG
+          window.showConfirmModal('삭제할 이력을 선택해주세요.', () => {
+            console.log('DEBUG: "삭제할 이력을 선택해주세요." modal closed.'); // DEBUG
+          }); 
           return;
         }
 
+        // DEBUG: 모달을 건너뛰고 직접 폼 제출을 시도하려면 아래 줄의 주석을 해제하세요.
+        // deleteForm.submit(); 
+        // console.log('DEBUG: Form submitted directly (bypassing modal for debug).'); // DEBUG
+        // return; // 직접 제출 후 함수 종료
+
+        console.log('DEBUG: Checkboxes selected. Showing confirmation modal.'); // DEBUG
         window.showConfirmModal('선택한 이력을 삭제하시겠습니까?', (confirmed) => {
+          console.log('DEBUG: Confirmation modal callback invoked. Confirmed:', confirmed); // DEBUG
           if (confirmed) {
             deleteForm.submit(); 
+            console.log('DEBUG: Form submitted after confirmation.'); // DEBUG
+          } else {
+            console.log('DEBUG: Form submission cancelled by user.'); // DEBUG
           }
         });
       });
+    } else {
+      console.error('ERROR: deleteButton not found!'); // DEBUG
     }
   });
 </script>

@@ -9,7 +9,7 @@
   <!-- 출근인증 제출 기능 -->
   <div class="mb-10 p-6 border border-gray-200 rounded-lg bg-gray-50">
     <h3 class="text-2xl font-semibold text-gray-700 mb-4">출근인증 제출</h3>
-    <p class="text-gray-600 text-sm mb-4">매일 아침 10시 이전에 출근인증을 제출해주세요. 10시 이후 제출 시 지각 벌점이, 미제출 시 미제출 벌점이 부과됩니다.</p>
+    <p class="text-gray-600 text-sm mb-4">출근인증을 제출해주세요. 미제출 시 벌점이 부과됩니다. 지각 또는 휴무 여부를 직접 체크해주세요.</p>
     <a href="{{ url_for('commute_auth') }}" 
        class="w-full inline-block text-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
       출근인증 제출하기
@@ -25,7 +25,6 @@
       <h3 class="text-xl font-semibold text-red-700 mb-2">벌점 내역</h3>
       <p class="text-gray-600 text-sm">벌점 기록 및 총 벌점 확인</p>
     </a>
-    {# 반성문/교육 요청 링크 제거됨 #}
     <a href="{{ url_for('request_punishment') }}" class="block p-6 bg-pink-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
       <h3 class="text-xl font-semibold text-pink-700 mb-2">체벌/교육 일정 요청</h3>
       <p class="text-gray-600 text-sm">희망 일시 및 도구 선택</p>
@@ -38,7 +37,6 @@
       <h3 class="text-xl font-semibold text-purple-700 mb-2">소액결제 관리</h3>
       <p class="text-gray-600 text-sm">월별 한도 관리 및 내역 기록</p>
     </a>
-    {# 독후감 제출 링크 제거됨 #}
     <a href="{{ url_for('cardio') }}" class="block p-6 bg-orange-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
       <h3 class="text-xl font-semibold text-orange-700 mb-2">유산소 운동 인증</h3>
       <p class="text-gray-600 text-sm">주간 인증 및 사진 업로드</p>
@@ -47,10 +45,14 @@
       <h3 class="text-xl font-semibold text-yellow-700 mb-2">체중 관리</h3>
       <p class="text-gray-600 text-sm">주간 체중 기록 및 그래프</p>
     </a>
-    {# 식사 인증 링크 제거됨 #}
+    {# 주간 출근표 업로드 탭 추가 #}
+    <a href="{{ url_for('upload_commute_schedule') }}" class="block p-6 bg-teal-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
+      <h3 class="text-xl font-semibold text-teal-700 mb-2">주간 출근표 업로드</h3>
+      <p class="text-gray-600 text-sm">매주 출근 시간표 파일 업로드</p>
+    </a>
   </div>
 
-  {# 하단 내비게이션 링크 제거 #}
+  {# 하단 내비게이션 링크 제거됨 (top_nav 매크로에 포함) #}
 </div>
 {% endblock %}
 

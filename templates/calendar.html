@@ -52,12 +52,13 @@
     const penaltiesData = JSON.parse('{{ penalties | tojson | safe }}'); // 벌점 데이터
     const punishmentSchedulesData = JSON.parse('{{ punishment_schedules | tojson | safe }}'); // 체벌 일정 데이터
     const penaltyResetHistoryData = JSON.parse('{{ penalty_reset_history | tojson | safe }}'); // 벌점 리셋 이력
+    const commuteSchedulesData = JSON.parse('{{ commute_schedules | tojson | safe }}'); // 출근시간표 데이터
 
-    const eventsByDate = {}; // { 'YYYY-MM-DD': { reports: [], penalties: [], schedules: [], resets: [] } }
+    const eventsByDate = {}; // { 'YYYY-MM-DD': { reports: [], penalties: [], schedules: [], resets: [], commute_schedules: [] } }
 
     function addEventToDate(dateKey, type, eventData) {
         if (!eventsByDate[dateKey]) {
-            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [] };
+            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [], commute_schedules: [] };
         }
         eventsByDate[dateKey][type].push(eventData);
     }
@@ -73,7 +74,7 @@
     });
 
     penaltiesData.forEach(p => {
-        const date = new Date(p.timestamp); // 벌점 부과 시간 기준
+        const date = new Date(p.timestamp); 
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
@@ -82,7 +83,6 @@
     });
 
     punishmentSchedulesData.forEach(s => {
-        // 승인된 일정은 approved_datetime, 아니면 requested_datetime 기준
         const date = new Date(s.approved_datetime || s.requested_datetime); 
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
@@ -92,12 +92,21 @@
     });
 
     penaltyResetHistoryData.forEach(pr => {
-        const date = new Date(pr.reset_date); // 리셋 날짜 기준
+        const date = new Date(pr.reset_date); 
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0'); 
         const dateKey = `${yyyy}-${mm}-${dd}`;
         addEventToDate(dateKey, 'resets', pr);
+    });
+
+    commuteSchedulesData.forEach(cs => {
+        const date = new Date(cs.week_start_date); // 출근시간표는 주간 시작일 기준
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'commute_schedules', cs);
     });
 
 
@@ -125,27 +134,36 @@
         const dateKey = `${yyyy}-${mm}-${dd}`;
 
         const dayCell = document.createElement('div');
-        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'transition', 'duration-150', 'ease-in-out', 'flex', 'flex-col', 'items-center', 'justify-center', 'min-h-[60px]'); // min-h 추가
+        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'transition', 'duration-150', 'ease-in-out', 'flex', 'flex-col', 'items-center', 'justify-center', 'min-h-[60px]'); 
         dayCell.textContent = day;
         dayCell.dataset.date = dateKey; // Store full date for lookup
 
         let hasEvent = false;
         const dayEvents = eventsByDate[dateKey];
         if (dayEvents) {
+            // 휴무일인 경우 가장 우선적으로 표시
+            if (dayEvents.reports.some(r => r.is_holiday)) { // 출근인증 기록 중 휴무일인 경우
+                dayCell.classList.add('bg-gray-300', 'hover:bg-gray-400', 'font-semibold', 'text-gray-900');
+                hasEvent = true;
+            }
             // 이벤트 유형별로 색상 표시 (우선순위는 나중에 결정)
-            if (dayEvents.schedules.some(s => s.status === 'approved')) { // 확정 일정 (가장 중요)
+            else if (dayEvents.schedules.some(s => s.status === 'approved')) { 
                 dayCell.classList.add('bg-pink-300', 'hover:bg-pink-400', 'font-semibold', 'text-pink-900');
                 hasEvent = true;
-            } else if (dayEvents.penalties.length > 0) { // 벌점
+            } else if (dayEvents.penalties.length > 0) { 
                 dayCell.classList.add('bg-red-200', 'hover:bg-red-300', 'font-semibold', 'text-red-800');
                 hasEvent = true;
-            } else if (dayEvents.resets.length > 0) { // 벌점 리셋
+            } else if (dayEvents.resets.length > 0) { 
                 dayCell.classList.add('bg-teal-200', 'hover:bg-teal-300', 'font-semibold', 'text-teal-800');
                 hasEvent = true;
-            } else if (dayEvents.reports.length > 0) { // 출근인증
+            } else if (dayEvents.reports.length > 0) { 
                 dayCell.classList.add('bg-green-200', 'hover:bg-green-300', 'font-semibold', 'text-green-800');
                 hasEvent = true;
             } 
+            // 출근시간표 업로드일 표시 (해당 주차의 월요일에만 표시)
+            if (dayEvents.commute_schedules.length > 0 && date.getDay() === 1) { // 월요일(1)에만 표시
+                dayCell.classList.add('border-2', 'border-purple-500'); // 보라색 테두리 추가
+            }
         }
         
         if (!hasEvent) {
@@ -176,9 +194,18 @@
       if (events) {
         let hasContent = false;
 
+        // 휴무일 기록
+        if (events.reports.some(r => r.is_holiday)) {
+            hasContent = true;
+            const listItem = document.createElement('li');
+            listItem.classList.add('bg-gray-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-gray-200');
+            listItem.innerHTML = `<p class="text-sm text-gray-700 font-semibold">✅ 휴무일입니다.</p>`;
+            selectedDateEventsList.appendChild(listItem);
+        }
+
         // 체벌/교육 일정 (확정된 것 먼저)
         if (events.schedules.length > 0) {
-            events.schedules.sort((a, b) => { // 승인된 일정을 먼저 표시
+            events.schedules.sort((a, b) => { 
                 if (a.status === 'approved' && b.status !== 'approved') return -1;
                 if (a.status !== 'approved' && b.status === 'approved') return 1;
                 return 0;
@@ -242,8 +269,8 @@
             });
         }
 
-        // 출근인증
-        if (events.reports.length > 0) {
+        // 출근인증 (휴무일이 아닌 경우만 표시)
+        if (events.reports.length > 0 && !events.reports.some(r => r.is_holiday)) {
             hasContent = true;
             events.reports.forEach(r => {
                 const listItem = document.createElement('li');
@@ -258,6 +285,24 @@
                 selectedDateEventsList.appendChild(listItem);
             });
         }
+
+        // 출근시간표 업로드 (해당 주차의 월요일에만 표시)
+        if (events.commute_schedules.length > 0 && new Date(dateKey).getDay() === 1) {
+            hasContent = true;
+            events.commute_schedules.forEach(cs => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-purple-200');
+                const timestamp = new Date(cs.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-purple-700 font-semibold">주간 출근표 업로드 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">시작 주간: ${new Date(cs.week_start_date).toLocaleDateString('ko-KR')}</p>
+                    <a href="{{ url_for('uploaded_file', filename='${cs.image_filename}') }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-1 inline-block">시간표 다운로드</a>
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
 
         if (!hasContent) {
             const noEntry = document.createElement('li');
