@@ -4,7 +4,7 @@
 {% block title %}관리자 대시보드{% endblock %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto">
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mxㅁ-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">관리자 대시보드</h2>
 
   <!-- 댕댕님 요약 정보 -->
@@ -102,7 +102,7 @@
       {% endif %}
     </div>
 
-    <!-- 최근 유산소 운동 인증 -->
+    <!-- 유산소 운동 인증 -->
     <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
       <h3 class="text-xl font-semibold text-orange-800 mb-4">최근 유산소 운동 인증 (ddang)</h3>
       {% if cardio_logs %}
@@ -139,9 +139,7 @@
 
   </div>
 
-  <div class="mt-10 text-center">
-    <a href="{{ url_for('logout') }}" class="inline-block px-6 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">로그아웃</a>
-  </div>
+  {# 하단 내비게이션 링크는 top_nav 매크로에 포함되어 제거됩니다. #}
 </div>
 
 {% endblock %}

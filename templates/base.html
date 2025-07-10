@@ -15,7 +15,7 @@
     }
     /* 커스텀 모달 스타일 */
     .modal {
-      display: none; /* 기본 숨김 */
+      display: none !important; /* 기본 숨김을 강제합니다! */
       position: fixed; /* 화면 고정 */
       z-index: 1000; /* 다른 요소 위에 표시 */
       left: 0;
@@ -24,7 +24,6 @@
       height: 100%;
       overflow: auto; /* 내용이 넘칠 경우 스크롤 */
       background-color: rgba(0,0,0,0.4); /* 반투명 배경 */
-      /* display: flex; <--- 이 줄을 제거했습니다! */
       justify-content: center;
       align-items: center;
     }
@@ -81,6 +80,9 @@
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center py-8">
+  {% from '_macros.html' import top_nav %} {# top_nav 매크로 임포트 #}
+  {{ top_nav() }} {# 상단 내비게이션 바 삽입 #}
+
   <div class="w-full max-w-4xl px-4">
     <!-- 플래시 메시지 표시 영역 -->
     {% with messages = get_flashed_messages(with_categories=true) %}

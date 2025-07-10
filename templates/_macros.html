@@ -4,3 +4,17 @@
     {{ "{:,.0f}".format(value) }}
 {% endmacro %}
 
+{% macro top_nav() %}
+<nav class="bg-gray-800 p-4 shadow-md rounded-b-xl mb-8 w-full max-w-4xl mx-auto">
+    <div class="container mx-auto flex justify-between items-center">
+        <div class="text-white text-2xl font-bold">
+            <a href="{{ url_for('home') }}" class="hover:text-gray-300 transition duration-200">생활 관리 앱</a>
+        </div>
+        <div class="space-x-4">
+            <a href="{{ url_for('home') }}" class="text-gray-300 hover:text-white transition duration-200 font-medium">홈으로</a>
+            <a href="{{ url_for('logout') }}" class="text-red-300 hover:text-red-100 transition duration-200 font-medium">로그아웃</a>
+        </div>
+    </div>
+</nav>
+{% endmacro %}
+

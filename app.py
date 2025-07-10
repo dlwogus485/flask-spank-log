@@ -22,7 +22,7 @@ db = SQLAlchemy(app)
 
 # 이미지 업로드 설정
 UPLOAD_FOLDER = 'static/uploads' 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'} 
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'} # PDF 허용 추가
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -45,7 +45,7 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
-class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
+class CommuteAuthReport(db.Model): 
     """
     출근인증 보고서를 저장하는 모델입니다.
     """
@@ -53,7 +53,8 @@ class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-    is_late = db.Column(db.Boolean, default=False) # 10시 이후 제출 여부 (지각 체크박스에 따라)
+    is_late = db.Column(db.Boolean, default=False) # 지각 체크박스 여부
+    is_holiday = db.Column(db.Boolean, default=False) # 휴무일 여부 추가
 
     user = db.relationship('User', backref=db.backref('commute_auth_reports', lazy=True))
 
@@ -67,6 +68,7 @@ class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
             'content': self.content,
             'timestamp': self.timestamp.isoformat(),
             'is_late': self.is_late,
+            'is_holiday': self.is_holiday, # 필드 추가
             'username': self.user.username if self.user else None
         }
 
@@ -82,21 +84,6 @@ class Payment(db.Model):
 
     def __repr__(self):
         return f'<Payment {self.id} by {self.user.username} - {self.amount}>'
-
-# BookReview 모델 제거
-# class BookReview(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-#     book_title = db.Column(db.String(255), nullable=False)
-#     page_count = db.Column(db.Integer, nullable=True)
-#     review_content = db.Column(db.Text, nullable=False)
-#     image_filename = db.Column(db.String(120), nullable=True) 
-#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-
-#     user = db.relationship('User', backref=db.backref('book_reviews', lazy=True))
-
-#     def __repr__(self):
-#         return f'<BookReview {self.id} by {self.user.username} - {self.book_title}>'
 
 class Cardio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -120,19 +107,6 @@ class WeightEntry(db.Model):
 
     def __repr__(self):
         return f'<WeightEntry {self.id} by {self.user.username} - {self.weight_kg}kg>'
-
-# MealLog 모델 제거
-# class MealLog(db.Model):
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-#     meal_type = db.Column(db.String(20), nullable=False) 
-#     image_filename = db.Column(db.String(120), nullable=True) 
-#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-
-#     user = db.relationship('User', backref=db.backref('meal_logs', lazy=True))
-
-#     def __repr__(self):
-#         return f'<MealLog {self.id} by {self.user.username} - {self.meal_type}>'
 
 class Penalty(db.Model):
     """
@@ -174,7 +148,7 @@ class PunishmentSchedule(db.Model):
     requested_datetime = db.Column(db.DateTime, nullable=False)
     reason = db.Column(db.Text, nullable=False)
     requested_tool = db.Column(db.String(50), nullable=True)
-    status = db.Column(db.String(20), default='pending', nullable=False) 
+    status = db.Column(db.String(20), default='pending', nullable=False) # pending, approved, rejected, rescheduled, completed
     admin_notes = db.Column(db.Text, nullable=True)
     approved_datetime = db.Column(db.DateTime, nullable=True) 
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
@@ -221,6 +195,31 @@ class PenaltyResetHistory(db.Model):
             'reset_date': self.reset_date.isoformat(),
             'reset_reason': self.reset_reason,
             'reset_points': self.reset_points,
+            'timestamp': self.timestamp.isoformat(),
+            'username': self.user.username if self.user else None
+        }
+
+class CommuteSchedule(db.Model): # 새로운 모델: 주간 출근시간표
+    """
+    주간 출근시간표 파일을 저장하는 모델입니다.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    week_start_date = db.Column(db.Date, nullable=False, unique=True) # 해당 주간의 시작일 (월요일)
+    image_filename = db.Column(db.String(120), nullable=False) # 업로드된 시간표 파일명
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+
+    user = db.relationship('User', backref=db.backref('commute_schedules', lazy=True))
+
+    def __repr__(self):
+        return f'<CommuteSchedule {self.id} for {self.user.username} - Week {self.week_start_date}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'week_start_date': self.week_start_date.isoformat(),
+            'image_filename': self.image_filename,
             'timestamp': self.timestamp.isoformat(),
             'username': self.user.username if self.user else None
         }
@@ -314,8 +313,9 @@ def home():
             flash("댕댕님 계정을 찾을 수 없습니다. 데이터베이스 초기화를 확인해주세요.", 'error')
             return render_template('dashboard.html',
                                    reports=[], payments=[], cardio_logs=[], weight_entries=[],
-                                   penalties=[], punishment_schedules=[],
-                                   ddang_total_penalty=0, ddang_pending_punishments=0, ddang_last_commute_auth="기록 없음")
+                                   penalties=[], punishment_schedules=[], commute_schedules=[],
+                                   ddang_total_penalty=0, ddang_pending_punishments=0, ddang_last_commute_auth="기록 없음",
+                                   ddang_last_commute_schedule_upload="기록 없음")
 
         # 댕댕님 데이터만 조회하여 대시보드에 표시합니다.
         all_reports = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(CommuteAuthReport.timestamp.desc()).limit(10).all()
@@ -326,12 +326,16 @@ def home():
         all_punishment_schedules = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).filter(
             PunishmentSchedule.status.in_(['pending', 'approved'])
         ).order_by(PunishmentSchedule.requested_datetime.asc()).limit(10).all()
+        all_commute_schedules = CommuteSchedule.query.filter_by(user_id=ddang_user_id).order_by(CommuteSchedule.timestamp.desc()).limit(10).all() # 새 모델 조회
 
         # 댕댕님 요약 정보
         ddang_total_penalty = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=ddang_user_id).scalar() or 0
         ddang_pending_punishments = PunishmentSchedule.query.filter_by(user_id=ddang_user_id, status='pending').count()
         ddang_last_commute_auth_obj = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(CommuteAuthReport.timestamp.desc()).first()
         ddang_last_commute_auth = ddang_last_commute_auth_obj.timestamp.strftime('%Y-%m-%d %H:%M') if ddang_last_commute_auth_obj else "기록 없음"
+        ddang_last_commute_schedule_upload_obj = CommuteSchedule.query.filter_by(user_id=ddang_user_id).order_by(CommuteSchedule.timestamp.desc()).first()
+        ddang_last_commute_schedule_upload = ddang_last_commute_schedule_upload_obj.timestamp.strftime('%Y-%m-%d %H:%M') if ddang_last_commute_schedule_upload_obj else "기록 없음"
+
 
         return render_template('dashboard.html',
                                reports=all_reports,
@@ -340,9 +344,11 @@ def home():
                                weight_entries=all_weight_entries,
                                penalties=all_penalties,
                                punishment_schedules=all_punishment_schedules,
+                               commute_schedules=all_commute_schedules, # 새 모델 전달
                                ddang_total_penalty=ddang_total_penalty,
                                ddang_pending_punishments=ddang_pending_punishments,
-                               ddang_last_commute_auth=ddang_last_commute_auth)
+                               ddang_last_commute_auth=ddang_last_commute_auth,
+                               ddang_last_commute_schedule_upload=ddang_last_commute_schedule_upload) # 새 요약 정보 전달
     else:
         user_id = session['user_id']
         total_penalty_points = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
@@ -384,11 +390,26 @@ def commute_auth():
 
         auth_content = request.form.get('commute_auth_content') 
         is_late_checkbox = request.form.get('is_late_checkbox') == 'on' 
+        is_holiday_checkbox = request.form.get('is_holiday_checkbox') == 'on' # 휴무 체크박스 확인
         now = datetime.now()
         
         is_late_penalty = False
-        # 10시 이후 제출 시 자동 지각 벌점 로직 제거
-        # 오직 '지각입니다' 체크박스 선택 시에만 지각 벌점 부과
+        
+        if is_holiday_checkbox:
+            # 휴무일로 기록, 벌점 없음
+            new_commute_auth = CommuteAuthReport(
+                user_id=user_id,
+                content="휴무입니다.",
+                timestamp=now,
+                is_late=False,
+                is_holiday=True # 휴무일로 저장
+            )
+            db.session.add(new_commute_auth)
+            db.session.commit()
+            flash("오늘은 휴무로 기록되었습니다.", 'info')
+            return redirect(url_for('commute_auth'))
+
+        # 휴무가 아닐 때만 지각 및 내용 검사
         if is_late_checkbox: 
             flash("지각을 선택하셨습니다. 지각 벌점이 부과됩니다.", 'warning')
             is_late_penalty = True
@@ -405,7 +426,8 @@ def commute_auth():
             user_id=user_id,
             content=auth_content,
             timestamp=now,
-            is_late=is_late_penalty 
+            is_late=is_late_penalty,
+            is_holiday=False
         )
         db.session.add(new_commute_auth)
         db.session.commit()
@@ -513,27 +535,37 @@ def check_daily_weekly_penalties():
     
     # --- 1. 출근인증 미제출 벌점 확인 (오늘 날짜 기준, 10시 이후에만) ---
     if now.hour >= 10:
-        commute_auth_submitted_today = CommuteAuthReport.query.filter(
+        commute_auth_record_today = CommuteAuthReport.query.filter( # 모델 이름 변경
             CommuteAuthReport.user_id == user_id,
             func.date(CommuteAuthReport.timestamp) == today
         ).first()
 
         penalty_already_issued_today = Penalty.query.filter(
             Penalty.user_id == user_id,
-            Penalty.penalty_type == '출근인증 미제출',
+            Penalty.penalty_type == '출근인증 미제출', # 벌점 유형 변경
             func.date(Penalty.timestamp) == today
         ).first()
 
-        if not commute_auth_submitted_today and not penalty_already_issued_today:
-            new_penalty = Penalty(
-                user_id=user_id,
-                penalty_type='출근인증 미제출',
-                rule_name='출근인증',
-                reason=f"오늘 출근인증 미제출 ({today.strftime('%Y-%m-%d')})",
-                penalty_points=2 
-            )
-            db.session.add(new_penalty)
-            flash("오늘 출근인증 미제출로 벌점이 부과되었습니다.", 'warning')
+        # 오늘 출근인증 기록이 없고, 오늘 벌점도 부과 안 됐고, 오늘이 휴무일도 아니라면
+        if not commute_auth_record_today and not penalty_already_issued_today:
+            # 휴무일이 아닌 경우에만 벌점 부과
+            # 여기서 today가 휴무일인지 CommuteAuthReport에서 확인
+            is_holiday_today_record = CommuteAuthReport.query.filter(
+                CommuteAuthReport.user_id == user_id,
+                func.date(CommuteAuthReport.timestamp) == today,
+                CommuteAuthReport.is_holiday == True
+            ).first()
+            
+            if not is_holiday_today_record: # 휴무일 기록이 없는 경우에만 미제출 벌점 부과
+                new_penalty = Penalty(
+                    user_id=user_id,
+                    penalty_type='출근인증 미제출', 
+                    rule_name='출근인증',
+                    reason=f"오늘 출근인증 미제출 ({today.strftime('%Y-%m-%d')})",
+                    penalty_points=2 
+                )
+                db.session.add(new_penalty)
+                flash("오늘 출근인증 미제출로 벌점이 부과되었습니다.", 'warning')
     
     # --- 2. 지난 주 유산소 운동 벌점 확인 (일주일 후 3회 미만) ---
     last_week_end = today - timedelta(days=today.weekday() + 1) 
@@ -670,6 +702,64 @@ def check_daily_weekly_penalties():
     return redirect(url_for('penalties'))
 
 # ---------------------------------------------------
+# 출근시간표 업로드 기능 (새롭게 추가)
+# ---------------------------------------------------
+@app.route('/upload_commute_schedule', methods=['GET', 'POST'])
+def upload_commute_schedule():
+    """
+    주간 출근시간표 파일을 업로드하는 페이지입니다.
+    """
+    if 'user_id' not in session or session.get('role') != 'sub':
+        flash("출근시간표를 업로드할 권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+
+    if request.method == 'POST':
+        schedule_file = request.files.get('schedule_file')
+        week_start_date_str = request.form.get('week_start_date')
+
+        try:
+            week_start_date = datetime.strptime(week_start_date_str, '%Y-%m-%d').date()
+            # 입력된 날짜가 월요일인지 확인
+            if week_start_date.weekday() != 0: # 월요일이 아니면 (월요일=0)
+                flash("주간 시작일은 월요일이어야 합니다.", 'error')
+                return redirect(url_for('upload_commute_schedule'))
+        except ValueError:
+            flash("유효한 날짜 형식을 입력해주세요 (YYYY-MM-%d).", 'error')
+            return redirect(url_for('upload_commute_schedule'))
+
+        if not schedule_file:
+            flash("시간표 파일은 필수입니다.", 'error')
+            return redirect(url_for('upload_commute_schedule'))
+        
+        # 파일 확장자 확인
+        if not allowed_file(schedule_file.filename):
+            flash("허용되지 않는 파일 형식입니다. (png, jpg, jpeg, gif, pdf만 가능)", 'warning')
+            return redirect(url_for('upload_commute_schedule'))
+
+        # 파일 저장
+        filename = secure_filename(schedule_file.filename)
+        unique_filename = f"schedule_{week_start_date.strftime('%Y%m%d')}_{filename}"
+        schedule_file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
+
+        # DB에 기록
+        new_schedule = CommuteSchedule(
+            user_id=user_id,
+            week_start_date=week_start_date,
+            image_filename=unique_filename
+        )
+        db.session.add(new_schedule)
+        db.session.commit()
+        flash("주간 출근시간표가 성공적으로 업로드되었습니다!", 'success')
+        return redirect(url_for('upload_commute_schedule'))
+
+    # 기존 출근시간표 기록 조회
+    user_commute_schedules = CommuteSchedule.query.filter_by(user_id=user_id).order_by(CommuteSchedule.timestamp.desc()).all()
+
+    return render_template('upload_commute_schedule.html', schedules=user_commute_schedules)
+
+# ---------------------------------------------------
 # 반성문 / 교육 요청 기능 (사용자 요청에 따라 제거)
 # ---------------------------------------------------
 # @app.route('/reflection_submission', methods=['GET', 'POST'])
@@ -695,22 +785,26 @@ def calendar_view():
         penalties_raw = Penalty.query.order_by(Penalty.timestamp.desc()).all()
         punishment_schedules_raw = PunishmentSchedule.query.order_by(PunishmentSchedule.timestamp.desc()).all()
         penalty_reset_history_raw = PenaltyResetHistory.query.order_by(PenaltyResetHistory.timestamp.desc()).all()
+        commute_schedules_raw = CommuteSchedule.query.order_by(CommuteSchedule.timestamp.desc()).all() # 새 모델 조회
     else: 
         reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).all() 
         penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(Penalty.timestamp.desc()).all()
         punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(PunishmentSchedule.timestamp.desc()).all()
         penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(PenaltyResetHistory.timestamp.desc()).all()
+        commute_schedules_raw = CommuteSchedule.query.filter_by(user_id=user_id).order_by(CommuteSchedule.timestamp.desc()).all() # 새 모델 조회
 
     reports_json = [r.to_dict() for r in reports_raw]
     penalties_json = [p.to_dict() for p in penalties_raw]
     punishment_schedules_json = [s.to_dict() for s in punishment_schedules_raw]
     penalty_reset_history_json = [pr.to_dict() for pr in penalty_reset_history_raw]
+    commute_schedules_json = [cs.to_dict() for cs in commute_schedules_raw] # 새 모델 JSON화
 
     return render_template('calendar.html',
                            reports=reports_json,
                            penalties=penalties_json,
                            punishment_schedules=punishment_schedules_json,
-                           penalty_reset_history=penalty_reset_history_json)
+                           penalty_reset_history=penalty_reset_history_json,
+                           commute_schedules=commute_schedules_json) # 새 모델 전달
 
 # ---------------------------------------------------
 # 체벌 일정 관리 기능
@@ -761,7 +855,7 @@ def admin_punishment_requests():
     관리자가 체벌/교육 요청을 확인하고 승인/거절하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 없습니다.", 'error')
+        flash("관리자 권한이 필요합니다.", 'error')
         return redirect(url_for('login'))
     
     pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(PunishmentSchedule.timestamp.asc()).all()
@@ -777,7 +871,7 @@ def approve_punishment(schedule_id):
     관리자가 체벌/교육 요청을 승인합니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 없습니다.", 'error')
+        flash("관리자 권한이 필요합니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
@@ -796,7 +890,7 @@ def reject_punishment(schedule_id):
     관리자가 체벌/교육 요청을 거절합니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 없습니다.", 'error')
+        flash("관리자 권한이 필요합니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
