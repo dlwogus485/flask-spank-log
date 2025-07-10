@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from '_macros.html' import format_currency %} 
+
+{% block title %}댕댕님 기록 관리{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">댕댕님 기록 관리 (ddang)</h2>
+
+  <!-- 데이터 삭제 폼 (공통) -->
+  <form id="adminDeleteForm" action="{{ url_for('delete_admin_selected_data') }}" method="post">
+    <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-red-50">
+      <h3 class="text-xl font-semibold text-red-800 mb-4">선택된 기록 삭제</h3>
+      <p class="text-gray-700 text-sm mb-4">아래 각 섹션에서 삭제할 항목을 선택한 후 이 버튼을 클릭하세요.</p>
+      <button type="button" id="deleteSelectedButton"
+              class="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">
+        선택 삭제
+      </button>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 소액결제 기록 -->
+      <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">
+        <h3 class="text-xl font-semibold text-purple-800 mb-4">소액결제 기록</h3>
+        {% if payments %}
+          <ul class="space-y-3">
+            {% for item in payments %}
+              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                <div class="flex items-center mb-2">
+                  <input type="checkbox" name="delete_items" value="payment_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                  <span class="font-medium text-gray-700">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <p class="text-gray-800 text-sm">{{ item.description | default('설명 없음') }} - {{ format_currency(item.amount | int) }}원</p>
+                {% if item.image_filename %}
+                  <a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-2 inline-block">명세서 다운로드</a>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-center text-gray-600">기록된 소액결제 내역이 없습니다.</p>
+        {% endif %}
+      </div>
+
+      <!-- 유산소 운동 기록 -->
+      <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
+        <h3 class="text-xl font-semibold text-orange-800 mb-4">유산소 운동 기록</h3>
+        {% if cardio_logs %}
+          <ul class="space-y-3">
+            {% for item in cardio_logs %}
+              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                <div class="flex items-center mb-2">
+                  <input type="checkbox" name="delete_items" value="cardio_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                  <span class="font-medium text-gray-700">{{ item.date.strftime('%Y-%m-%d') }}</span>
+                </div>
+                <p class="text-gray-800 text-sm">기록 시간: {{ item.timestamp.strftime('%H:%M') }}</p>
+                {% if item.image_filename %}
+                  <a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-2 inline-block">사진 다운로드</a>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-center text-gray-600">기록된 유산소 운동이 없습니다.</p>
+        {% endif %}
+      </div>
+
+      <!-- 체중 기록 -->
+      <div class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
+        <h3 class="text-xl font-semibold text-yellow-800 mb-4">체중 기록</h3>
+        {% if weight_entries %}
+          <ul class="space-y-3">
+            {% for item in weight_entries %}
+              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col">
+                <div class="flex items-center mb-2">
+                  <input type="checkbox" name="delete_items" value="weight_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                  <span class="font-medium text-gray-700">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                <p class="text-gray-800 text-sm">체중: {{ item.weight_kg }}kg</p>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-center text-gray-600">기록된 체중이 없습니다.</p>
+        {% endif %}
+      </div>
+
+      {# 주간 출근 시간표 목록 섹션은 유지하지만, 삭제 기능은 제거되었음을 명시 #}
+      <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200 lg:col-span-3"> 
+        <h3 class="text-xl font-semibold text-teal-800 mb-4">주간 출근 시간표 목록</h3>
+        {% if commute_schedules %}
+          <ul class="space-y-3">
+            {% for item in commute_schedules %}
+              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
+                <div class="flex items-center">
+                  {# 체크박스 제거 #}
+                  <span class="font-medium text-gray-700 mr-3">{{ item.week_start_date.strftime('%Y-%m-%d') }} 주차</span>
+                </div>
+                <span class="text-gray-600 text-sm ml-auto">업로드됨: {{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                {% if item.image_filename %}
+                  <a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-3 text-sm">시간표 다운로드</a>
+                {% endif %}
+                {# 삭제 버튼 제거 #}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-center text-gray-600">업로드된 출근 시간표가 없습니다.</p>
+        {% endif %}
+      </div>
+
+    </div>
+  </form>
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const deleteSelectedButton = document.getElementById('deleteSelectedButton');
+    const adminDeleteForm = document.getElementById('adminDeleteForm');
+
+    if (deleteSelectedButton) {
+      deleteSelectedButton.addEventListener('click', (event) => {
+        event.preventDefault(); // 기본 폼 제출 방지
+
+        const checkboxes = document.querySelectorAll('input[name="delete_items"]:checked');
+        if (checkboxes.length === 0) {
+          window.showConfirmModal('삭제할 기록을 선택해주세요.', () => {}); 
+          return;
+        }
+
+        window.showConfirmModal('선택한 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', (confirmed) => {
+          if (confirmed) {
+            adminDeleteForm.submit(); 
+          }
+        });
+      });
+    }
+  });
+</script>
+{% endblock %}
+

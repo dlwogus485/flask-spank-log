@@ -25,7 +25,8 @@
               <form action="{{ url_for('reject_punishment', schedule_id=request.id) }}" method="post">
                 <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition duration-300">거절</button>
               </form>
-              <a href="{{ url_for('request_reschedule', schedule_id=request.id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition duration-300">연기 요청</a>
+              {# 관리자 페이지에서 '연기 요청' 버튼 제거 #}
+              {# <a href="{{ url_for('request_reschedule', schedule_id=request.id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition duration-300">연기 요청</a> #}
             </div>
           </li>
         {% endfor %}

@@ -34,12 +34,22 @@
     {% if schedules %}
       <ul class="space-y-4">
         {% for schedule in schedules %}
-          <li class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center">
-            <span class="font-medium text-gray-700 mr-3">{{ schedule.week_start_date.strftime('%Y-%m-%d') }} 주차</span>
-            <span class="text-gray-600 text-sm ml-auto">업로드됨: {{ schedule.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-            {% if schedule.image_filename %}
-              <a href="{{ url_for('uploaded_file', filename=schedule.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-3 text-sm">다운로드</a>
-            {% endif %}
+          <li class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
+            <div>
+              <span class="font-medium text-gray-700 mr-3">{{ schedule.week_start_date.strftime('%Y-%m-%d') }} 주차</span>
+              <span class="text-gray-600 text-sm ml-auto">업로드됨: {{ schedule.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+              {% if schedule.image_filename %}
+                <a href="{{ url_for('uploaded_file', filename=schedule.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-3 text-sm">다운로드</a>
+              {% endif %}
+            </div>
+            {# 삭제 버튼 추가 - delete_commute_schedule 라우트가 app.py에 정의되어야 합니다. #}
+            <form action="{{ url_for('delete_commute_schedule', schedule_id=schedule.id) }}" method="post" class="inline-block ml-4">
+              <button type="submit" 
+                      class="px-3 py-1 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition duration-300"
+                      onclick="return confirm('이 출근 시간표를 삭제하시겠습니까?');"> {# JavaScript confirm 팝업 #}
+                삭제
+              </button>
+            </form>
           </li>
         {% endfor %}
       </ul>

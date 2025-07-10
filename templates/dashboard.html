@@ -8,20 +8,20 @@
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">관리자 대시보드</h2>
 
   <!-- 댕댕님 요약 정보 -->
-  <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-100 shadow-sm">
-    <h3 class="text-xl font-semibold text-gray-800 mb-4">댕댕님 요약 정보 (ddang)</h3>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-gray-700">
+  <div class="mb-8 p-8 border border-gray-300 rounded-xl bg-blue-50 shadow-lg text-center">
+    <h3 class="text-xl font-bold text-blue-800 mb-4">✨ 댕댕님 현황 요약 (ddang) ✨</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 text-gray-700">
       <div>
         <p class="text-sm font-medium">현재 총 벌점:</p>
-        <p class="text-lg font-bold text-red-700">{{ ddang_total_penalty }}점</p>
+        <p class="text-3xl font-extrabold text-red-700 mt-1">{{ ddang_total_penalty }}점</p>
       </div>
       <div>
         <p class="text-sm font-medium">대기 중인 체벌/교육 일정:</p>
-        <p class="text-lg font-bold text-pink-700">{{ ddang_pending_punishments }}건</p>
+        <p class="text-3xl font-extrabold text-pink-700 mt-1">{{ ddang_pending_punishments }}건</p>
       </div>
       <div>
         <p class="text-sm font-medium">마지막 출근인증:</p>
-        <p class="text-lg font-bold text-blue-700">{{ ddang_last_commute_auth }}</p>
+        <p class="text-lg font-bold text-blue-700 mt-1">{{ ddang_last_commute_auth }}</p>
       </div>
     </div>
     <div class="mt-6 flex flex-wrap justify-center gap-4">
@@ -29,6 +29,7 @@
       <a href="{{ url_for('commute_auth_history') }}" class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition duration-300 shadow-md text-sm">출근인증 이력</a>
       <a href="{{ url_for('admin_punishment_requests') }}" class="px-4 py-2 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition duration-300 shadow-md text-sm">체벌/교육 관리</a>
       <a href="{{ url_for('calendar_view') }}" class="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition duration-300 shadow-md text-sm">캘린더 보기</a>
+      <a href="{{ url_for('admin_data_management') }}" class="px-4 py-2 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-800 transition duration-300 shadow-md text-sm">댕댕님 모든 기록 관리 (삭제 기능 포함)</a>
     </div>
   </div>
 
@@ -137,24 +138,7 @@
       {% endif %}
     </div>
 
-    <!-- 최근 출근 시간표 업로드 내역 -->
-    <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200">
-      <h3 class="text-xl font-semibold text-teal-800 mb-4">최근 출근 시간표 업로드 내역 (ddang)</h3>
-      {% if commute_schedules %}
-        <ul class="space-y-3">
-          {% for schedule in commute_schedules %}
-            <li class="text-gray-700 text-sm">
-              <span class="font-medium">{{ schedule.week_start_date.strftime('%Y-%m-%d') }} 주차</span>: 업로드됨
-              {% if schedule.image_filename %}
-                <a href="{{ url_for('uploaded_file', filename=schedule.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-2 text-xs">시간표 다운로드</a>
-              {% endif %}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="text-gray-600">업로드된 출근 시간표가 없습니다.</p>
-      {% endif %}
-    </div>
+    {# 최근 출근 시간표 업로드 내역 섹션은 제거되었습니다. #}
 
   </div>
 
