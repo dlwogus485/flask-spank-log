@@ -6,23 +6,23 @@
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">출근인증 제출</h2>
   
-  {% if existing_commute_auth %}
+  {# 기존 출근인증이 있을 때 표시되던 알림 문구 블록을 제거합니다. #}
+  {# {% if existing_commute_auth %}
     <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-6" role="alert">
       <strong class="font-bold">알림!</strong>
       <span class="block sm:inline">오늘은 이미 출근인증을 제출하셨습니다.</span>
       <p class="text-sm mt-2">제출 시간: {{ existing_commute_auth.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
       <p class="text-sm">내용: {{ existing_commute_auth.content }}</p>
       {% if existing_commute_auth.is_late %}
-        <p class="text-sm text-red-600 font-bold mt-1">⚠️ 지각으로 제출되었습니다.</p>
-      {% elif existing_commute_auth.is_holiday %} {# 휴무일인 경우 추가 #}
+        <p class="text-sm text-red-600 font-bold mt-1">⚠️ 10시 이후 제출되어 지각 벌점이 부과되었습니다.</p>
+      {% elif existing_commute_auth.is_holiday %}
         <p class="text-sm text-green-600 font-bold mt-1">✅ 휴무일로 기록되었습니다.</p>
       {% endif %}
     </div>
     <div class="mt-8 text-center">
       <a href="{{ url_for('commute_auth_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 출근인증 이력 보기</a>
     </div>
-  {% else %}
-    {# 변경된 문구 반영: 10시 이후 제출 관련 내용 삭제 #}
+  {% else %} #}
     <p class="text-gray-600 text-sm mb-6">출근인증을 제출해주세요. 미제출 시 벌점이 부과됩니다. 지각 또는 휴무 여부를 직접 체크해주세요.</p>
     <form method="post" action="{{ url_for('commute_auth') }}" class="space-y-4">
       <div>
@@ -30,13 +30,13 @@
         <textarea id="commute_auth_content" name="commute_auth_content" rows="6" placeholder="오늘의 출근인증 내용을 작성하세요. (예: 오늘 할 일, 다짐 등)" required
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"></textarea>
       </div>
-      <div class="flex items-center space-x-4"> {# 체크박스들 정렬을 위해 flex 추가 #}
+      <div class="flex items-center space-x-4">
         <div class="flex items-center">
           <input type="checkbox" id="is_late_checkbox" name="is_late_checkbox"
                  class="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
           <label for="is_late_checkbox" class="ml-2 block text-sm text-gray-900">지각입니다 (체크 시 벌점 1점)</label>
         </div>
-        <div class="flex items-center"> {# 휴무 체크박스 추가 #}
+        <div class="flex items-center">
           <input type="checkbox" id="is_holiday_checkbox" name="is_holiday_checkbox"
                  class="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
           <label for="is_holiday_checkbox" class="ml-2 block text-sm text-gray-900">휴무입니다 (체크 시 미제출 벌점 방지)</label>
@@ -50,7 +50,7 @@
     <div class="mt-4 text-center">
       <a href="{{ url_for('commute_auth_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 출근인증 이력 보기</a>
     </div>
-  {% endif %}
+  {# {% endif %} #} {# 이 부분도 제거합니다. #}
 
   <div class="mt-8 text-center">
     <a href="{{ url_for('home') }}" class="inline-block text-gray-600 hover:underline font-medium">홈으로</a>

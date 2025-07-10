@@ -1177,11 +1177,11 @@ def cardio():
         Cardio.user_id == user_id,
         Cardio.date >= start_of_week,
         Cardio.date <= end_of_week
-    ).order_by(Cardio.timestamp.desc()).all() 
+    ).order_by(db.desc(Cardio.timestamp)).all() # 올바르게 수정된 부분
 
     weekly_count = len(weekly_cardio_logs)
     
-    recent_logs = Cardio.query.filter_by(user_id=user_id).order_by(Cardio.timestamp.desc()).limit(7).all()
+    recent_logs = Cardio.query.filter_by(user_id=user_id).order_by(db.desc(Cardio.timestamp)).limit(7).all() # 올바르게 수정된 부분
 
     return render_template('cardio.html',
                            weekly_cardio_logs=weekly_cardio_logs,
@@ -1218,7 +1218,7 @@ def weight():
     start_of_week = today - timedelta(days=today.weekday()) 
     end_of_week = start_of_week + timedelta(days=6)
 
-    user_weight_entries = WeightEntry.query.filter_by(user_id=user_id).order_by(WeightEntry.timestamp.asc()).all()
+    user_weight_entries = WeightEntry.query.filter_by(user_id=user_id).order_by(db.desc(WeightEntry.timestamp)).all() # 올바르게 수정된 부분
     
     labels = [entry.timestamp.strftime('%m-%d') for entry in user_weight_entries]
     data = [entry.weight_kg for entry in user_weight_entries]
@@ -1229,7 +1229,7 @@ def weight():
         recent_entries = WeightEntry.query.filter(
             WeightEntry.user_id == user_id,
             func.date(WeightEntry.timestamp) >= two_weeks_ago.date() 
-        ).order_by(WeightEntry.timestamp.asc()).all()
+        ).order_by(db.desc(WeightEntry.timestamp)).all() # 올바르게 수정된 부분
         
         if len(recent_entries) >= 2:
             first_weight_in_period = recent_entries[0].weight_kg
