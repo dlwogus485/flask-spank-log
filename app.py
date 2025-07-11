@@ -741,8 +741,7 @@ def admin_data_management():
     payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).all()
     cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).all()
     weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).all()
-    # commute_schedules 제거 (모델 삭제)
-    commute_schedules = [] # 빈 리스트로 전달
+    commute_schedules = [] # 빈 리스트로 전달 (모델 삭제)
 
     return render_template('admin_data_management.html',
                            payments=payments,
@@ -988,7 +987,7 @@ def request_reschedule(schedule_id):
     댕댕님이 체벌 일정을 연기 요청하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'sub':
-        flash("일정 요청 권한이 없습니다.", 'error')
+        flash("일정 연기 요청 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
