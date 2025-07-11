@@ -52,13 +52,15 @@
     const penaltiesData = JSON.parse('{{ penalties | tojson | safe }}'); // 벌점 데이터
     const punishmentSchedulesData = JSON.parse('{{ punishment_schedules | tojson | safe }}'); // 체벌 일정 데이터
     const penaltyResetHistoryData = JSON.parse('{{ penalty_reset_history | tojson | safe }}'); // 벌점 리셋 이력
-    const commuteSchedulesData = JSON.parse('{{ commute_schedules | tojson | safe }}'); // 출근시간표 데이터
+    const paymentsData = JSON.parse('{{ payments | tojson | safe }}'); // 소액결제 데이터 추가
+    const cardioLogsData = JSON.parse('{{ cardio_logs | tojson | safe }}'); // 유산소 운동 데이터 추가
+    const weightEntriesData = JSON.parse('{{ weight_entries | tojson | safe }}'); // 체중 데이터 추가
 
-    const eventsByDate = {}; // { 'YYYY-MM-DD': { reports: [], penalties: [], schedules: [], resets: [], commute_schedules: [] } }
+    const eventsByDate = {}; // { 'YYYY-MM-DD': { reports: [], penalties: [], schedules: [], resets: [], payments: [], cardio_logs: [], weight_entries: [] } }
 
     function addEventToDate(dateKey, type, eventData) {
         if (!eventsByDate[dateKey]) {
-            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [], commute_schedules: [] };
+            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [], payments: [], cardio_logs: [], weight_entries: [] }; // 필드 추가
         }
         eventsByDate[dateKey][type].push(eventData);
     }
@@ -100,13 +102,31 @@
         addEventToDate(dateKey, 'resets', pr);
     });
 
-    commuteSchedulesData.forEach(cs => {
-        const date = new Date(cs.week_start_date); // 출근시간표는 주간 시작일 기준
+    paymentsData.forEach(p => { // 소액결제 데이터 추가
+        const date = new Date(p.timestamp);
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'commute_schedules', cs);
+        addEventToDate(dateKey, 'payments', p);
+    });
+
+    cardioLogsData.forEach(c => { // 유산소 운동 데이터 추가 (날짜 필드가 date 타입이므로 직접 사용)
+        const date = new Date(c.date); 
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'cardio_logs', c);
+    });
+
+    weightEntriesData.forEach(w => { // 체중 데이터 추가
+        const date = new Date(w.timestamp);
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        const dateKey = `${yyyy}-${mm}-${dd}`;
+        addEventToDate(dateKey, 'weight_entries', w);
     });
 
 
@@ -142,12 +162,12 @@
         const dayEvents = eventsByDate[dateKey];
         if (dayEvents) {
             // 휴무일인 경우 가장 우선적으로 표시
-            if (dayEvents.reports.some(r => r.is_holiday)) { // 출근인증 기록 중 휴무일인 경우
+            if (dayEvents.reports.some(r => r.is_holiday)) { 
                 dayCell.classList.add('bg-gray-300', 'hover:bg-gray-400', 'font-semibold', 'text-gray-900');
                 hasEvent = true;
             }
             // 이벤트 유형별로 색상 표시 (우선순위는 나중에 결정)
-            else if (dayEvents.schedules.some(s => s.status === 'approved')) { 
+            else if (dayEvents.schedules.length > 0) { 
                 dayCell.classList.add('bg-pink-300', 'hover:bg-pink-400', 'font-semibold', 'text-pink-900');
                 hasEvent = true;
             } else if (dayEvents.penalties.length > 0) { 
@@ -159,11 +179,16 @@
             } else if (dayEvents.reports.length > 0) { 
                 dayCell.classList.add('bg-green-200', 'hover:bg-green-300', 'font-semibold', 'text-green-800');
                 hasEvent = true;
+            } else if (dayEvents.payments.length > 0) { // 소액결제 기록이 있는 경우
+                dayCell.classList.add('bg-purple-200', 'hover:bg-purple-300', 'font-semibold', 'text-purple-800');
+                hasEvent = true;
+            } else if (dayEvents.cardio_logs.length > 0) { // 유산소 기록이 있는 경우
+                dayCell.classList.add('bg-orange-200', 'hover:bg-orange-300', 'font-semibold', 'text-orange-800');
+                hasEvent = true;
+            } else if (dayEvents.weight_entries.length > 0) { // 체중 기록이 있는 경우
+                dayCell.classList.add('bg-yellow-200', 'hover:bg-yellow-300', 'font-semibold', 'text-yellow-800');
+                hasEvent = true;
             } 
-            // 출근시간표 업로드일 표시 (해당 주차의 월요일에만 표시)
-            if (dayEvents.commute_schedules.length > 0 && date.getDay() === 1) { // 월요일(1)에만 표시
-                dayCell.classList.add('border-2', 'border-purple-500'); // 보라색 테두리 추가
-            }
         }
         
         if (!hasEvent) {
@@ -227,7 +252,6 @@
                 listItem.innerHTML = `
                     <p class="text-sm text-pink-700 font-semibold">일정: ${statusText} (${timeString})</p>
                     <p class="text-gray-800 leading-relaxed text-sm mt-1">요청 사유: ${s.reason}</p>
-                    ${s.requested_tool ? `<p class="text-gray-700 text-xs mt-1">희망 도구: ${s.requested_tool}</p>` : ''}
                     ${s.admin_notes ? `<p class="text-gray-700 text-xs mt-1">관리자 메모: ${s.admin_notes}</p>` : ''}
                 `;
                 selectedDateEventsList.appendChild(listItem);
@@ -269,6 +293,56 @@
             });
         }
 
+        // 소액결제 기록 추가
+        if (events.payments.length > 0) {
+            hasContent = true;
+            events.payments.forEach(p => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-purple-200');
+                const timestamp = new Date(p.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-purple-700 font-semibold">소액결제 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">${p.description || '설명 없음'} - ${p.amount.toLocaleString()}원</p>
+                    ${p.image_filename ? `<a href="{{ url_for('uploaded_file', filename='${p.image_filename}') }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-1 inline-block">명세서 다운로드</a>` : ''}
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // 유산소 운동 기록 추가
+        if (events.cardio_logs.length > 0) {
+            hasContent = true;
+            events.cardio_logs.forEach(c => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-orange-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-orange-200');
+                const timestamp = new Date(c.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-orange-700 font-semibold">유산소 운동 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">날짜: ${new Date(c.date).toLocaleDateString('ko-KR')}</p>
+                    ${c.image_filename ? `<a href="{{ url_for('uploaded_file', filename='${c.image_filename}') }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-1 inline-block">사진 다운로드</a>` : ''}
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // 체중 기록 추가
+        if (events.weight_entries.length > 0) {
+            hasContent = true;
+            events.weight_entries.forEach(w => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-yellow-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-yellow-200');
+                const timestamp = new Date(w.timestamp);
+                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                listItem.innerHTML = `
+                    <p class="text-sm text-yellow-700 font-semibold">체중 기록 (${timeString})</p>
+                    <p class="text-gray-800 leading-relaxed text-sm mt-1">체중: ${w.weight_kg}kg</p>
+                `;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
         // 출근인증 (휴무일이 아닌 경우만 표시)
         if (events.reports.length > 0 && !events.reports.some(r => r.is_holiday)) {
             hasContent = true;
@@ -285,24 +359,6 @@
                 selectedDateEventsList.appendChild(listItem);
             });
         }
-
-        // 출근시간표 업로드 (해당 주차의 월요일에만 표시)
-        if (events.commute_schedules.length > 0 && new Date(dateKey).getDay() === 1) {
-            hasContent = true;
-            events.commute_schedules.forEach(cs => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-purple-200');
-                const timestamp = new Date(cs.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                listItem.innerHTML = `
-                    <p class="text-sm text-purple-700 font-semibold">주간 출근표 업로드 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">시작 주간: ${new Date(cs.week_start_date).toLocaleDateString('ko-KR')}</p>
-                    <a href="{{ url_for('uploaded_file', filename='${cs.image_filename}') }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-1 inline-block">시간표 다운로드</a>
-                `;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-
 
         if (!hasContent) {
             const noEntry = document.createElement('li');

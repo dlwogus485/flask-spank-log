@@ -323,20 +323,20 @@ def home():
                                    ddang_total_penalty=0, ddang_pending_punishments=0, ddang_last_commute_auth="기록 없음")
 
         # 댕댕님 데이터만 조회하여 대시보드에 표시합니다.
-        all_reports = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(CommuteAuthReport.timestamp.desc()).limit(10).all()
-        all_payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(Payment.timestamp.desc()).limit(10).all()
-        all_cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(Cardio.timestamp.desc()).limit(10).all()
-        all_weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(WeightEntry.timestamp.desc()).limit(10).all()
-        all_penalties = Penalty.query.order_by(Penalty.timestamp.desc()).limit(10).all()
+        all_reports = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(db.desc(CommuteAuthReport.timestamp)).limit(10).all()
+        all_payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).limit(10).all()
+        all_cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).limit(10).all()
+        all_weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).limit(10).all()
+        all_penalties = Penalty.query.order_by(db.desc(Penalty.timestamp)).limit(10).all()
         all_punishment_schedules = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).filter(
             PunishmentSchedule.status.in_(['pending', 'approved'])
-        ).order_by(PunishmentSchedule.requested_datetime.asc()).limit(10).all()
+        ).order_by(db.desc(PunishmentSchedule.requested_datetime)).limit(10).all()
         # all_commute_schedules 제거 (모델 삭제)
 
         # 댕댕님 요약 정보
         ddang_total_penalty = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=ddang_user_id).scalar() or 0
         ddang_pending_punishments = PunishmentSchedule.query.filter_by(user_id=ddang_user_id, status='pending').count()
-        ddang_last_commute_auth_obj = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(CommuteAuthReport.timestamp.desc()).first()
+        ddang_last_commute_auth_obj = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(db.desc(CommuteAuthReport.timestamp)).first()
         ddang_last_commute_auth = ddang_last_commute_auth_obj.timestamp.strftime('%Y-%m-%d %H:%M') if ddang_last_commute_auth_obj else "기록 없음"
         # ddang_last_commute_schedule_upload 제거 (모델 삭제)
 
@@ -457,12 +457,12 @@ def commute_auth_history():
         # 관리자는 ddang 사용자의 이력을 조회
         ddang_user = User.query.filter_by(username='ddang').first()
         if ddang_user:
-            user_reports = CommuteAuthReport.query.filter_by(user_id=ddang_user.id).order_by(CommuteAuthReport.timestamp.desc()).all()
+            user_reports = CommuteAuthReport.query.filter_by(user_id=ddang_user.id).order_by(db.desc(CommuteAuthReport.timestamp)).all()
         else:
             user_reports = [] # ddang 사용자가 없으면 빈 리스트
             flash("댕댕님 계정을 찾을 수 없습니다.", 'error')
     else: # 일반 사용자는 본인 이력을 조회
-        user_reports = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).all() 
+        user_reports = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(db.desc(CommuteAuthReport.timestamp)).all() 
         
     return render_template('commute_auth_history.html', reports=user_reports) 
 
@@ -545,9 +545,9 @@ def penalties():
     if filter_day:
         query = query.filter(extract('day', Penalty.timestamp) == filter_day)
 
-    user_penalties = query.order_by(Penalty.timestamp.desc()).all()
+    user_penalties = query.order_by(db.desc(Penalty.timestamp)).all()
     
-    available_years = db.session.query(extract('year', Penalty.timestamp)).distinct().order_by(extract('year', Penalty.timestamp).desc()).all()
+    available_years = db.session.query(extract('year', Penalty.timestamp)).distinct().order_by(db.desc(extract('year', Penalty.timestamp))).all()
     available_months = db.session.query(extract('month', Penalty.timestamp)).distinct().order_by(extract('month', Penalty.timestamp)).all()
 
     return render_template('penalties.html', 
@@ -731,7 +731,7 @@ def admin_data_management():
     관리자가 댕댕님의 소액결제, 유산소, 체중 기록을 관리하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 필요합니다.", 'error')
+        flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     ddang_user = User.query.filter_by(username='ddang').first()
@@ -828,22 +828,31 @@ def calendar_view():
     user_id = session['user_id']
     
     if session.get('role') == 'owner':
-        reports_raw = CommuteAuthReport.query.order_by(CommuteAuthReport.timestamp.desc()).all() 
-        penalties_raw = Penalty.query.order_by(Penalty.timestamp.desc()).all()
-        punishment_schedules_raw = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all() # 올바르게 수정
-        penalty_reset_history_raw = PenaltyResetHistory.query.order_by(PenaltyResetHistory.timestamp.desc()).all()
+        reports_raw = CommuteAuthReport.query.order_by(db.desc(CommuteAuthReport.timestamp)).all() 
+        penalties_raw = Penalty.query.order_by(db.desc(Penalty.timestamp)).all()
+        punishment_schedules_raw = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all() 
+        penalty_reset_history_raw = PenaltyResetHistory.query.order_by(db.desc(PenaltyResetHistory.timestamp)).all()
+        payments_raw = Payment.query.order_by(db.desc(Payment.timestamp)).all() # 추가
+        cardio_logs_raw = Cardio.query.order_by(db.desc(Cardio.timestamp)).all() # 추가
+        weight_entries_raw = WeightEntry.query.order_by(db.desc(WeightEntry.timestamp)).all() # 추가
         commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
     else: 
-        reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).all() 
-        penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(Penalty.timestamp.desc()).all()
-        punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all() # 올바르게 수정
-        penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(PenaltyResetHistory.timestamp.desc()).all()
+        reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(db.desc(CommuteAuthReport.timestamp)).all() 
+        penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(db.desc(Penalty.timestamp)).all()
+        punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all() 
+        penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(db.desc(PenaltyResetHistory.timestamp)).all()
+        payments_raw = Payment.query.filter_by(user_id=user_id).order_by(db.desc(Payment.timestamp)).all() # 추가
+        cardio_logs_raw = Cardio.query.filter_by(user_id=user_id).order_by(db.desc(Cardio.timestamp)).all() # 추가
+        weight_entries_raw = WeightEntry.query.filter_by(user_id=user_id).order_by(db.desc(WeightEntry.timestamp)).all() # 추가
         commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
 
     reports_json = [r.to_dict() for r in reports_raw]
     penalties_json = [p.to_dict() for p in penalties_raw]
     punishment_schedules_json = [s.to_dict() for s in punishment_schedules_raw]
     penalty_reset_history_json = [pr.to_dict() for pr in penalty_reset_history_raw]
+    payments_json = [p.to_dict() for p in payments_raw] # 추가
+    cardio_logs_json = [c.to_dict() for c in cardio_logs_raw] # 추가
+    weight_entries_json = [w.to_dict() for w in weight_entries_raw] # 추가
     commute_schedules_json = [cs.to_dict() for cs in commute_schedules_raw] 
 
     return render_template('calendar.html',
@@ -851,6 +860,9 @@ def calendar_view():
                            penalties=penalties_json,
                            punishment_schedules=punishment_schedules_json,
                            penalty_reset_history=penalty_reset_history_json,
+                           payments=payments_json, # 추가
+                           cardio_logs=cardio_logs_json, # 추가
+                           weight_entries=weight_entries_json, # 추가
                            commute_schedules=commute_schedules_json) 
 
 # ---------------------------------------------------
@@ -905,8 +917,8 @@ def admin_punishment_requests():
         flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
-    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(PunishmentSchedule.timestamp.asc()).all()
-    all_schedules = PunishmentSchedule.query.order_by(PunishmentSchedule.timestamp.desc()).all()
+    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(db.desc(PunishmentSchedule.timestamp)).all()
+    all_schedules = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all()
 
     return render_template('admin_punishment_requests.html', 
                            pending_requests=pending_requests,
@@ -1101,7 +1113,7 @@ def payments():
         Payment.user_id == user_id,
         extract('year', Payment.timestamp) == current_year,
         extract('month', Payment.timestamp) == current_month
-    ).order_by(Payment.timestamp.desc()).all()
+    ).order_by(db.desc(Payment.timestamp)).all()
 
     monthly_total = db.session.query(func.sum(Payment.amount)).filter(
         Payment.user_id == user_id,
