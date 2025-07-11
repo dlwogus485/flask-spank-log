@@ -23,7 +23,7 @@ db = SQLAlchemy(app)
 
 # 이미지 업로드 설정
 UPLOAD_FOLDER = 'static/uploads' 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'} # PDF 허용 추가 (여전히 필요할 수 있으므로 유지)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'} 
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
@@ -46,7 +46,7 @@ class User(db.Model):
     def __repr__(self):
         return f'<User {self.username}>'
 
-class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
+class CommuteAuthReport(db.Model): 
     """
     출근인증 보고서를 저장하는 모델입니다.
     """
@@ -54,8 +54,8 @@ class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     content = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-    is_late = db.Column(db.Boolean, default=False) # 10시 이후 제출 여부 (지각 체크박스에 따라)
-    is_holiday = db.Column(db.Boolean, default=False) # 휴무일 여부 추가
+    is_late = db.Column(db.Boolean, default=False) 
+    is_holiday = db.Column(db.Boolean, default=False) 
 
     user = db.relationship('User', backref=db.backref('commute_auth_reports', lazy=True))
 
@@ -69,7 +69,7 @@ class CommuteAuthReport(db.Model): # Report -> CommuteAuthReport로 변경
             'content': self.content,
             'timestamp': self.timestamp.isoformat(),
             'is_late': self.is_late,
-            'is_holiday': self.is_holiday, # 필드 추가
+            'is_holiday': self.is_holiday, 
             'username': self.user.username if self.user else None
         }
 
@@ -78,27 +78,46 @@ class Payment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount = db.Column(db.Integer, nullable=False)
     description = db.Column(db.String(255), nullable=True)
-    image_filename = db.Column(db.String(120), nullable=False) # 명세서 사진 필수
+    image_filename = db.Column(db.String(120), nullable=False) 
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
 
     user = db.relationship('User', backref=db.backref('payments', lazy=True))
 
     def __repr__(self):
         return f'<Payment {self.id} by {self.user.username} - {self.amount}>'
-
-# BookReview 모델 제거 (유지)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'amount': self.amount,
+            'description': self.description,
+            'image_filename': self.image_filename,
+            'timestamp': self.timestamp.isoformat(),
+            'username': self.user.username if self.user else None
+        }
 
 class Cardio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     date = db.Column(db.Date, nullable=False) 
-    image_filename = db.Column(db.String(120), nullable=False) # 사진 업로드 필수
+    image_filename = db.Column(db.String(120), nullable=False) 
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False) 
 
     user = db.relationship('User', backref=db.backref('cardio_logs', lazy=True))
 
     def __repr__(self):
         return f'<Cardio {self.id} by {self.user.username} - {self.date}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'date': self.date.isoformat(),
+            'image_filename': self.image_filename,
+            'timestamp': self.timestamp.isoformat(),
+            'username': self.user.username if self.user else None
+        }
 
 class WeightEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -110,8 +129,15 @@ class WeightEntry(db.Model):
 
     def __repr__(self):
         return f'<WeightEntry {self.id} by {self.user.username} - {self.weight_kg}kg>'
-
-# MealLog 모델 제거 (유지)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'weight_kg': self.weight_kg,
+            'timestamp': self.timestamp.isoformat(),
+            'username': self.user.username if self.user else None
+        }
 
 class Penalty(db.Model):
     """
@@ -124,7 +150,7 @@ class Penalty(db.Model):
     reason = db.Column(db.Text, nullable=True)
     penalty_points = db.Column(db.Integer, nullable=False, default=1)
     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-    related_date = db.Column(db.Date, nullable=True) # 벌점과 관련된 날짜 (주간/월간 벌점 계산 시 해당 날짜/주차를 기록)
+    related_date = db.Column(db.Date, nullable=True) 
 
     user = db.relationship('User', backref=db.backref('penalties', lazy=True))
 
@@ -203,29 +229,6 @@ class PenaltyResetHistory(db.Model):
             'timestamp': self.timestamp.isoformat(),
             'username': self.user.username if self.user else None
         }
-
-# CommuteSchedule 모델 제거 (완전히 삭제)
-# class CommuteSchedule(db.Model): 
-#     id = db.Column(db.Integer, primary_key=True)
-#     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-#     week_start_date = db.Column(db.Date, nullable=False, unique=True) 
-#     image_filename = db.Column(db.String(120), nullable=False) 
-#     timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
-
-#     user = db.relationship('User', backref=db.backref('commute_schedules', lazy=True))
-
-#     def __repr__(self):
-#         return f'<CommuteSchedule {self.id} for {self.user.username} - Week {self.week_start_date}>'
-    
-#     def to_dict(self):
-#         return {
-#             'id': self.id,
-#             'user_id': self.user_id,
-#             'week_start_date': self.week_start_date.isoformat(),
-#             'image_filename': self.image_filename,
-#             'timestamp': self.timestamp.isoformat(),
-#             'username': self.user.username if self.user else None
-#         }
 
 
 # 데이터베이스 초기화 함수
@@ -709,15 +712,15 @@ def check_daily_weekly_penalties():
     return redirect(url_for('penalties'))
 
 # ---------------------------------------------------
-# 출근시간표 업로드 기능 (새롭게 추가)
+# 출근시간표 업로드 기능 (완전히 제거됨)
 # ---------------------------------------------------
 # @app.route('/upload_commute_schedule', methods=['GET', 'POST'])
 # def upload_commute_schedule():
-#     pass # 기능 제거
+#     pass 
 
 # @app.route('/delete_commute_schedule', methods=['POST'])
 # def delete_commute_schedule():
-#     pass # 기능 제거
+#     pass 
 
 # ---------------------------------------------------
 # 관리자 데이터 관리 (새롭게 추가)
@@ -736,18 +739,18 @@ def admin_data_management():
 
     if not ddang_user_id:
         flash("댕댕님 계정을 찾을 수 없습니다.", 'error')
-        return render_template('admin_data_management.html', payments=[], cardio_logs=[], weight_entries=[], commute_schedules=[]) # commute_schedules 추가
+        return render_template('admin_data_management.html', payments=[], cardio_logs=[], weight_entries=[])
 
     payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).all()
     cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).all()
     weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).all()
-    commute_schedules = [] # 빈 리스트로 전달 (모델 삭제)
+    # commute_schedules 제거 (모델 삭제)
+    # commute_schedules = [] # 빈 리스트로 전달
 
     return render_template('admin_data_management.html',
                            payments=payments,
                            cardio_logs=cardio_logs,
-                           weight_entries=weight_entries,
-                           commute_schedules=commute_schedules) # commute_schedules 전달
+                           weight_entries=weight_entries) # commute_schedules 제거
 
 @app.route('/delete_admin_selected_data', methods=['POST'])
 def delete_admin_selected_data():
@@ -827,13 +830,13 @@ def calendar_view():
     if session.get('role') == 'owner':
         reports_raw = CommuteAuthReport.query.order_by(CommuteAuthReport.timestamp.desc()).all() 
         penalties_raw = Penalty.query.order_by(Penalty.timestamp.desc()).all()
-        punishment_schedules_raw = PunishmentSchedule.query.order_by(PunishmentSchedule.timestamp.desc()).all()
+        punishment_schedules_raw = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all() # 올바르게 수정
         penalty_reset_history_raw = PenaltyResetHistory.query.order_by(PenaltyResetHistory.timestamp.desc()).all()
         commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
     else: 
         reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).all() 
         penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(Penalty.timestamp.desc()).all()
-        punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(Penalty.timestamp.desc()).all()
+        punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all() # 올바르게 수정
         penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(PenaltyResetHistory.timestamp.desc()).all()
         commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
 
@@ -987,7 +990,7 @@ def request_reschedule(schedule_id):
     댕댕님이 체벌 일정을 연기 요청하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'sub':
-        flash("일정 연기 요청 권한이 없습니다.", 'error')
+        flash("일정 요청 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     schedule = PunishmentSchedule.query.get_or_404(schedule_id)
