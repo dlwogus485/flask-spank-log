@@ -16,6 +16,15 @@ app = Flask(__name__)
 # 실제 서비스에서는 환경 변수 등으로 관리하는 것이 강력히 권장됩니다.
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dbd0cfe42026f704b2829aa295c15f4c5698c9fa033ebac7') 
 
+# 자동 로그인 기능: 세션 영구 지속 시간 설정 (예: 31일)
+app.permanent_session_lifetime = timedelta(days=31)
+
+# Flask 세션 쿠키 보안 설정 추가 (모바일 자동 로그인 문제 해결)
+app.config['SESSION_COOKIE_SECURE'] = True      # HTTPS에서만 쿠키 전송
+app.config['SESSION_COOKIE_HTTPONLY'] = True    # JavaScript에서 쿠키 접근 불가
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # CSRF 보호 (Strict도 가능하나, 일부 리다이렉션에 문제될 수 있음)
+
+
 # 데이터베이스 설정
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False 
@@ -279,12 +288,15 @@ def login():
     if request.method == 'POST':
         uid = request.form.get('username')
         pwd = request.form.get('password')
+        remember_me = request.form.get('auto_login') == 'on' 
         user = User.query.filter_by(username=uid).first() 
 
         if user and user.check_password(pwd): 
             session['user_id'] = user.id
             session['username'] = user.username
             session['role'] = user.role
+            session.permanent = remember_me 
+
             flash(f"환영합니다, {user.username}님!", 'success')
             return redirect(url_for('home'))
         else:
@@ -731,7 +743,7 @@ def admin_data_management():
     관리자가 댕댕님의 소액결제, 유산소, 체중 기록을 관리하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 없습니다.", 'error')
+        flash("관리자 권한이 필요합니다.", 'error')
         return redirect(url_for('login'))
     
     ddang_user = User.query.filter_by(username='ddang').first()
@@ -832,27 +844,27 @@ def calendar_view():
         penalties_raw = Penalty.query.order_by(db.desc(Penalty.timestamp)).all()
         punishment_schedules_raw = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all() 
         penalty_reset_history_raw = PenaltyResetHistory.query.order_by(db.desc(PenaltyResetHistory.timestamp)).all()
-        payments_raw = Payment.query.order_by(db.desc(Payment.timestamp)).all() # 추가
-        cardio_logs_raw = Cardio.query.order_by(db.desc(Cardio.timestamp)).all() # 추가
-        weight_entries_raw = WeightEntry.query.order_by(db.desc(WeightEntry.timestamp)).all() # 추가
+        payments_raw = Payment.query.order_by(db.desc(Payment.timestamp)).all() 
+        cardio_logs_raw = Cardio.query.order_by(db.desc(Cardio.timestamp)).all() 
+        weight_entries_raw = WeightEntry.query.order_by(db.desc(WeightEntry.timestamp)).all() 
         commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
     else: 
         reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(db.desc(CommuteAuthReport.timestamp)).all() 
         penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(db.desc(Penalty.timestamp)).all()
         punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all() 
         penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=user_id).order_by(db.desc(PenaltyResetHistory.timestamp)).all()
-        payments_raw = Payment.query.filter_by(user_id=user_id).order_by(db.desc(Payment.timestamp)).all() # 추가
-        cardio_logs_raw = Cardio.query.filter_by(user_id=user_id).order_by(db.desc(Cardio.timestamp)).all() # 추가
-        weight_entries_raw = WeightEntry.query.filter_by(user_id=user_id).order_by(db.desc(WeightEntry.timestamp)).all() # 추가
+        payments_raw = Payment.query.filter_by(user_id=user_id).order_by(db.desc(Payment.timestamp)).all() 
+        cardio_logs_raw = Cardio.query.filter_by(user_id=user_id).order_by(db.desc(Cardio.timestamp)).all() 
+        weight_entries_raw = WeightEntry.query.filter_by(user_id=user_id).order_by(db.desc(WeightEntry.timestamp)).all() 
         commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
 
     reports_json = [r.to_dict() for r in reports_raw]
     penalties_json = [p.to_dict() for p in penalties_raw]
     punishment_schedules_json = [s.to_dict() for s in punishment_schedules_raw]
     penalty_reset_history_json = [pr.to_dict() for pr in penalty_reset_history_raw]
-    payments_json = [p.to_dict() for p in payments_raw] # 추가
-    cardio_logs_json = [c.to_dict() for c in cardio_logs_raw] # 추가
-    weight_entries_json = [w.to_dict() for w in weight_entries_raw] # 추가
+    payments_json = [p.to_dict() for p in payments_raw] 
+    cardio_logs_json = [c.to_dict() for c in cardio_logs_raw] 
+    weight_entries_json = [w.to_dict() for w in weight_entries_raw] 
     commute_schedules_json = [cs.to_dict() for cs in commute_schedules_raw] 
 
     return render_template('calendar.html',
@@ -860,9 +872,9 @@ def calendar_view():
                            penalties=penalties_json,
                            punishment_schedules=punishment_schedules_json,
                            penalty_reset_history=penalty_reset_history_json,
-                           payments=payments_json, # 추가
-                           cardio_logs=cardio_logs_json, # 추가
-                           weight_entries=weight_entries_json, # 추가
+                           payments=payments_json, 
+                           cardio_logs=cardio_logs_json, 
+                           weight_entries=weight_entries_json, 
                            commute_schedules=commute_schedules_json) 
 
 # ---------------------------------------------------
@@ -917,7 +929,7 @@ def admin_punishment_requests():
         flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
-    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(db.desc(PunishmentSchedule.timestamp)).all()
+    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(PunishmentSchedule.timestamp.asc()).all()
     all_schedules = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all()
 
     return render_template('admin_punishment_requests.html', 
