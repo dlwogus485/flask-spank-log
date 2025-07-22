@@ -37,6 +37,8 @@
 <script>
   // JavaScript for Calendar
   document.addEventListener('DOMContentLoaded', () => {
+    console.log('DEBUG: Calendar DOMContentLoaded fired.'); // DEBUG
+
     const calendarGrid = document.getElementById('calendarGrid');
     const currentMonthYearHeader = document.getElementById('currentMonthYear');
     const prevMonthBtn = document.getElementById('prevMonth');
@@ -56,6 +58,14 @@
     const cardioLogsData = JSON.parse('{{ cardio_logs | tojson | safe }}'); 
     const weightEntriesData = JSON.parse('{{ weight_entries | tojson | safe }}'); 
 
+    console.log('DEBUG: reportsData:', reportsData); 
+    console.log('DEBUG: penaltiesData:', penaltiesData); 
+    console.log('DEBUG: punishmentSchedulesData:', punishmentSchedulesData); 
+    console.log('DEBUG: penaltyResetHistoryData:', penaltyResetHistoryData); 
+    console.log('DEBUG: paymentsData:', paymentsData); 
+    console.log('DEBUG: cardioLogsData:', cardioLogsData); 
+    console.log('DEBUG: weightEntriesData:', weightEntriesData); 
+
     const eventsByDate = {}; 
 
     function addEventToDate(dateKey, type, eventData) {
@@ -66,6 +76,8 @@
     }
 
     // Organize data by date for easy lookup
+    // 모든 이벤트는 해당 이벤트의 날짜를 기준으로 eventsByDate에 추가합니다.
+    // 체벌/교육 일정은 requested_datetime을 기준으로 매핑합니다.
     reportsData.forEach(r => {
         const date = new Date(r.timestamp);
         const yyyy = date.getFullYear();
@@ -85,12 +97,14 @@
     });
 
     punishmentSchedulesData.forEach(s => {
-        const date = new Date(s.approved_datetime || s.requested_datetime); 
+        // 캘린더에 표시할 날짜는 요청일자(requested_datetime)입니다.
+        const date = new Date(s.requested_datetime); 
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, '0');
         const dd = String(date.getDate()).padStart(2, '0');
         const dateKey = `${yyyy}-${mm}-${dd}`;
         addEventToDate(dateKey, 'schedules', s);
+        console.log(`DEBUG: Added schedule to dateKey ${dateKey} (requested: ${s.requested_datetime}, approved: ${s.approved_datetime}):`, s); // DEBUG
     });
 
     penaltyResetHistoryData.forEach(pr => {
@@ -129,6 +143,8 @@
         addEventToDate(dateKey, 'weight_entries', w);
     });
 
+    console.log('DEBUG: eventsByDate after processing all data:', eventsByDate); // DEBUG
+
 
     function renderCalendar() {
       calendarGrid.innerHTML = ''; 
@@ -158,14 +174,18 @@
 
         let hasEvent = false;
         const dayEvents = eventsByDate[dateKey];
+        
         if (dayEvents) {
+            console.log(`DEBUG: Checking events for ${dateKey}:`, dayEvents); // DEBUG
             if (dayEvents.reports.some(r => r.is_holiday)) { 
                 dayCell.classList.add('bg-gray-300', 'hover:bg-gray-400', 'font-semibold', 'text-gray-900');
                 hasEvent = true;
             }
+            // 체벌/교육 일정 (schedules)이 있는 경우
             else if (dayEvents.schedules.length > 0) { 
                 dayCell.classList.add('bg-pink-300', 'hover:bg-pink-400', 'font-semibold', 'text-pink-900');
                 hasEvent = true;
+                console.log(`DEBUG: Schedule found for ${dateKey}.`); // DEBUG
             } else if (dayEvents.penalties.length > 0) { 
                 dayCell.classList.add('bg-red-200', 'hover:bg-red-300', 'font-semibold', 'text-red-800');
                 hasEvent = true;
@@ -224,17 +244,17 @@
 
         // 체벌/교육 일정 (확정된 것 먼저)
         if (events.schedules.length > 0) {
-            events.schedules.sort((a, b) => { 
-                if (a.status === 'approved' && b.status !== 'approved') return -1;
-                if (a.status !== 'approved' && b.status === 'approved') return 1;
-                return 0;
-            });
             hasContent = true;
             events.schedules.forEach(s => {
                 const listItem = document.createElement('li');
                 listItem.classList.add('bg-pink-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-pink-200');
-                const scheduleTime = new Date(s.approved_datetime || s.requested_datetime);
-                const timeString = scheduleTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                
+                const requestedTime = new Date(s.requested_datetime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                let approvedTimeText = '';
+                if (s.approved_datetime) {
+                    const approvedTime = new Date(s.approved_datetime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                    approvedTimeText = `<span class="text-xs text-gray-600 ml-1">(확정: ${approvedTime})</span>`; 
+                }
                 const statusText = {
                     'pending': '대기 중',
                     'approved': '확정됨',
@@ -244,8 +264,9 @@
                 }[s.status] || s.status;
 
                 listItem.innerHTML = `
-                    <p class="text-sm text-pink-700 font-semibold">일정: ${statusText} (${timeString})</p>
+                    <p class="text-sm text-pink-700 font-semibold">일정: ${statusText} (신청: ${requestedTime})${approvedTimeText}</p>
                     <p class="text-gray-800 leading-relaxed text-sm mt-1">요청 사유: ${s.reason}</p>
+                    ${s.requested_tool ? `<p class="text-gray-700 text-xs mt-1">희망 도구: ${s.requested_tool}</p>` : ''}
                     ${s.admin_notes ? `<p class="text-gray-700 text-xs mt-1">관리자 메모: ${s.admin_notes}</p>` : ''}
                 `;
                 selectedDateEventsList.appendChild(listItem);
@@ -295,7 +316,6 @@
                 listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-purple-200');
                 const timestamp = new Date(p.timestamp);
                 const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                // url_for를 JavaScript에서 직접 사용하기 위해 Flask 변수를 JS 변수로 전달
                 const imageUrl = "{{ url_for('uploaded_file', filename='') }}" + p.image_filename; 
                 listItem.innerHTML = `
                     <p class="text-sm text-purple-700 font-semibold">소액결제 (${timeString})</p>

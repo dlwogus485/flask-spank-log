@@ -85,28 +85,26 @@
         {% endif %}
       </div>
 
-      {# 주간 출근 시간표 목록 섹션 제거 #}
-      {# <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200 lg:col-span-3"> 
-        <h3 class="text-xl font-semibold text-teal-800 mb-4">주간 출근 시간표 목록</h3>
-        {% if commute_schedules %}
+      {# 벌점 기록 섹션 추가 #}
+      <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200 lg:col-span-3"> {# 3열 전체를 차지하도록 col-span-3 추가 #}
+        <h3 class="text-xl font-semibold text-red-800 mb-4">벌점 기록</h3>
+        {% if penalties %}
           <ul class="space-y-3">
-            {% for item in commute_schedules %}
+            {% for item in penalties %}
               <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
                 <div class="flex items-center">
-                  <input type="checkbox" name="delete_items" value="commute_schedule_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                  <span class="font-medium text-gray-700">{{ item.week_start_date.strftime('%Y-%m-%d') }} 주차</span>
+                  <input type="checkbox" name="delete_items" value="penalty_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                  <span class="font-medium text-gray-700 mr-3">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
                 </div>
-                <span class="text-gray-600 text-sm ml-auto">업로드됨: {{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-                {% if item.image_filename %}
-                  <a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline ml-3 text-sm">시간표 다운로드</a>
-                {% endif %}
+                <p class="text-gray-800 text-sm flex-1">{{ item.penalty_type }} ({{ item.penalty_points }}점)</p>
+                {% if item.reason %}<span class="text-gray-600 text-xs ml-auto">사유: {{ item.reason | truncate(30) }}</span>{% endif %}
               </li>
             {% endfor %}
           </ul>
         {% else %}
-          <p class="text-center text-gray-600">업로드된 출근 시간표가 없습니다.</p>
+          <p class="text-center text-gray-600">기록된 벌점 내역이 없습니다.</p>
         {% endif %}
-      </div> #}
+      </div>
 
     </div>
   </form>

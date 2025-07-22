@@ -23,6 +23,7 @@ app.permanent_session_lifetime = timedelta(days=31)
 app.config['SESSION_COOKIE_SECURE'] = True      # HTTPS에서만 쿠키 전송
 app.config['SESSION_COOKIE_HTTPONLY'] = True    # JavaScript에서 쿠키 접근 불가
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'   # CSRF 보호 (Strict도 가능하나, 일부 리다이렉션에 문제될 수 있음)
+app.config['SESSION_COOKIE_DOMAIN'] = '.myscorereport.store' # 모든 서브도메인에서 유효하도록 설정
 
 
 # 데이터베이스 설정
@@ -75,7 +76,7 @@ class CommuteAuthReport(db.Model):
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'content': self.content,
+            'content': json.dumps(self.content)[1:-1], # JSON 이스케이프 강화
             'timestamp': self.timestamp.isoformat(),
             'is_late': self.is_late,
             'is_holiday': self.is_holiday, 
@@ -100,7 +101,7 @@ class Payment(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'amount': self.amount,
-            'description': self.description,
+            'description': json.dumps(self.description)[1:-1] if self.description else None, # JSON 이스케이프 강화
             'image_filename': self.image_filename,
             'timestamp': self.timestamp.isoformat(),
             'username': self.user.username if self.user else None
@@ -170,9 +171,9 @@ class Penalty(db.Model):
         return {
             'id': self.id,
             'user_id': self.user_id,
-            'penalty_type': self.penalty_type,
-            'rule_name': self.rule_name,
-            'reason': self.reason,
+            'penalty_type': json.dumps(self.penalty_type)[1:-1], # JSON 이스케이프 강화
+            'rule_name': json.dumps(self.rule_name)[1:-1] if self.rule_name else None, # JSON 이스케이프 강화
+            'reason': json.dumps(self.reason)[1:-1] if self.reason else None, # JSON 이스케이프 강화
             'penalty_points': self.penalty_points,
             'timestamp': self.timestamp.isoformat(),
             'related_date': self.related_date.isoformat() if self.related_date else None,
@@ -203,11 +204,11 @@ class PunishmentSchedule(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'requested_datetime': self.requested_datetime.isoformat(),
-            'reason': self.reason,
-            'requested_tool': self.requested_tool,
-            'status': self.status,
-            'admin_notes': self.admin_notes,
-            'approved_datetime': self.approved_datetime.isoformat() if self.approved_datetime else None,
+            'reason': json.dumps(self.reason)[1:-1], # JSON 이스케이프 강화
+            'requested_tool': json.dumps(self.requested_tool)[1:-1] if self.requested_tool else None, # JSON 이스케이프 강화
+            'status': json.dumps(self.status)[1:-1], # JSON 이스케이프 강화
+            'admin_notes': json.dumps(self.admin_notes)[1:-1] if self.admin_notes else None, # JSON 이스케이프 강화
+            'approved_datetime': self.approved_datetime.isoformat() if self.approved_datetime else None, 
             'timestamp': self.timestamp.isoformat(),
             'username': self.user.username if self.user else None
         }
@@ -233,7 +234,7 @@ class PenaltyResetHistory(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'reset_date': self.reset_date.isoformat(),
-            'reset_reason': self.reset_reason,
+            'reset_reason': json.dumps(self.reset_reason)[1:-1], # JSON 이스케이프 강화
             'reset_points': self.reset_points,
             'timestamp': self.timestamp.isoformat(),
             'username': self.user.username if self.user else None
@@ -339,7 +340,7 @@ def home():
         all_payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).limit(10).all()
         all_cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).limit(10).all()
         all_weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).limit(10).all()
-        all_penalties = Penalty.query.order_by(db.desc(Penalty.timestamp)).limit(10).all()
+        all_penalties = Penalty.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Penalty.timestamp)).limit(10).all() 
         all_punishment_schedules = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).filter(
             PunishmentSchedule.status.in_(['pending', 'approved'])
         ).order_by(db.desc(PunishmentSchedule.requested_datetime)).limit(10).all()
@@ -358,7 +359,7 @@ def home():
                                payments=all_payments,
                                cardio_logs=all_cardio_logs,
                                weight_entries=all_weight_entries,
-                               penalties=all_penalties,
+                               penalties=all_penalties, 
                                punishment_schedules=all_punishment_schedules,
                                # commute_schedules 제거
                                ddang_total_penalty=ddang_total_penalty,
@@ -459,7 +460,7 @@ def commute_auth_history():
     """
     현재 로그인한 사용자의 출근인증 이력을 조회합니다.
     """
-    if 'user_id' not in session: # 로그인 여부 확인
+    if 'user_id' not in session or session.get('role') != 'sub':
         flash("이력을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
@@ -483,7 +484,7 @@ def delete_commute_auth_selected():
     """
     선택된 출근인증 기록을 삭제합니다.
     """
-    if 'user_id' not in session: # 로그인 여부 확인
+    if 'user_id' not in session or session.get('role') != 'sub':
         flash("출근인증을 삭제할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
@@ -599,12 +600,19 @@ def check_daily_weekly_penalties():
         Penalty.related_date == last_week_start 
     ).first()
 
+    print(f"DEBUG: last_week_start: {last_week_start}, last_week_end: {last_week_end}") # DEBUG
+    
     if today.weekday() == 0 and not penalty_for_last_week_cardio_issued: 
+        # Cardio.date가 db.Column(db.Date)이므로 시간 정보는 없습니다.
+        # 따라서 <= last_week_end 는 해당 날짜의 자정까지 포함하므로,
+        # last_week_end + timedelta(days=1)로 다음 날 자정까지 범위를 확장하여
+        # last_week_end 날짜의 모든 기록이 포함되도록 합니다.
         last_week_cardio_count = Cardio.query.filter(
             Cardio.user_id == user_id,
             Cardio.date >= last_week_start,
-            Cardio.date <= last_week_end
+            Cardio.date < (last_week_end + timedelta(days=1)) # 수정된 부분
         ).count()
+        print(f"DEBUG: last_week_cardio_count for user {user_id} between {last_week_start} and {last_week_end}: {last_week_cardio_count}") # DEBUG
 
         penalty_points = 0
         reason = ""
@@ -743,7 +751,7 @@ def admin_data_management():
     관리자가 댕댕님의 소액결제, 유산소, 체중 기록을 관리하는 페이지입니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
-        flash("관리자 권한이 필요합니다.", 'error')
+        flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     ddang_user = User.query.filter_by(username='ddang').first()
@@ -751,29 +759,29 @@ def admin_data_management():
 
     if not ddang_user_id:
         flash("댕댕님 계정을 찾을 수 없습니다.", 'error')
-        return render_template('admin_data_management.html', payments=[], cardio_logs=[], weight_entries=[])
+        return render_template('admin_data_management.html', payments=[], cardio_logs=[], weight_entries=[], penalties=[]) 
 
     payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).all()
     cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).all()
     weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).all()
-    # commute_schedules 제거 (모델 삭제)
-    # commute_schedules = [] # 빈 리스트로 전달
+    penalties = Penalty.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Penalty.timestamp)).all() 
 
     return render_template('admin_data_management.html',
                            payments=payments,
                            cardio_logs=cardio_logs,
-                           weight_entries=weight_entries) # commute_schedules 제거
+                           weight_entries=weight_entries,
+                           penalties=penalties) 
 
 @app.route('/delete_admin_selected_data', methods=['POST'])
 def delete_admin_selected_data():
     """
-    관리자 페이지에서 선택된 기록 (소액결제, 유산소, 체중, 출근시간표)을 삭제합니다.
+    관리자 페이지에서 선택된 기록 (소액결제, 유산소, 체중, 벌점)을 삭제합니다.
     """
     if 'user_id' not in session or session.get('role') != 'owner':
         flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
-    selected_items = request.form.getlist('delete_items') # 예: ['payment_1', 'cardio_5', 'commute_schedule_2']
+    selected_items = request.form.getlist('delete_items') 
     
     ddang_user = User.query.filter_by(username='ddang').first()
     ddang_user_id = ddang_user.id if ddang_user else None
@@ -803,11 +811,11 @@ def delete_admin_selected_data():
                 if record:
                     db.session.delete(record)
                     deleted_count += 1
-            # elif item_type == 'commute_schedule': # 출근 시간표 삭제 로직 제거 (모델 삭제)
-            #     record = CommuteSchedule.query.filter_by(id=item_id, user_id=ddang_user_id).first()
-            #     if record:
-            #         db.session.delete(record)
-            #         deleted_count += 1
+            elif item_type == 'penalty': 
+                record = Penalty.query.filter_by(id=item_id, user_id=ddang_user_id).first()
+                if record:
+                    db.session.delete(record)
+                    deleted_count += 1
         except Exception as e:
             db.session.rollback()
             flash(f"기록 삭제 중 오류 발생: {e}", 'error')
@@ -840,14 +848,21 @@ def calendar_view():
     user_id = session['user_id']
     
     if session.get('role') == 'owner':
-        reports_raw = CommuteAuthReport.query.order_by(db.desc(CommuteAuthReport.timestamp)).all() 
-        penalties_raw = Penalty.query.order_by(db.desc(Penalty.timestamp)).all()
-        punishment_schedules_raw = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all() 
-        penalty_reset_history_raw = PenaltyResetHistory.query.order_by(db.desc(PenaltyResetHistory.timestamp)).all()
-        payments_raw = Payment.query.order_by(db.desc(Payment.timestamp)).all() 
-        cardio_logs_raw = Cardio.query.order_by(db.desc(Cardio.timestamp)).all() 
-        weight_entries_raw = WeightEntry.query.order_by(db.desc(WeightEntry.timestamp)).all() 
-        commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
+        ddang_user = User.query.filter_by(username='ddang').first()
+        ddang_user_id = ddang_user.id if ddang_user else None
+        
+        if not ddang_user_id:
+            flash("댕댕님 계정을 찾을 수 없습니다.", 'error')
+            return render_template('calendar.html', reports=[], penalties=[], punishment_schedules=[], penalty_reset_history=[], payments=[], cardio_logs=[], weight_entries=[])
+
+        reports_raw = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(db.desc(CommuteAuthReport.timestamp)).all() 
+        penalties_raw = Penalty.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Penalty.timestamp)).all()
+        punishment_schedules_raw = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all() 
+        penalty_reset_history_raw = PenaltyResetHistory.query.filter_by(user_id=ddang_user_id).order_by(db.desc(PenaltyResetHistory.timestamp)).all()
+        payments_raw = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).all() 
+        cardio_logs_raw = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).all() 
+        weight_entries_raw = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).all() 
+        commute_schedules_raw = [] 
     else: 
         reports_raw = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(db.desc(CommuteAuthReport.timestamp)).all() 
         penalties_raw = Penalty.query.filter_by(user_id=user_id).order_by(db.desc(Penalty.timestamp)).all()
@@ -856,7 +871,7 @@ def calendar_view():
         payments_raw = Payment.query.filter_by(user_id=user_id).order_by(db.desc(Payment.timestamp)).all() 
         cardio_logs_raw = Cardio.query.filter_by(user_id=user_id).order_by(db.desc(Cardio.timestamp)).all() 
         weight_entries_raw = WeightEntry.query.filter_by(user_id=user_id).order_by(db.desc(WeightEntry.timestamp)).all() 
-        commute_schedules_raw = [] # 빈 리스트로 전달 (모델 삭제)
+        commute_schedules_raw = [] 
 
     reports_json = [r.to_dict() for r in reports_raw]
     penalties_json = [p.to_dict() for p in penalties_raw]
@@ -865,7 +880,7 @@ def calendar_view():
     payments_json = [p.to_dict() for p in payments_raw] 
     cardio_logs_json = [c.to_dict() for c in cardio_logs_raw] 
     weight_entries_json = [w.to_dict() for w in weight_entries_raw] 
-    commute_schedules_json = [cs.to_dict() for cs in commute_schedules_raw] 
+    commute_schedules_json = [] 
 
     return render_template('calendar.html',
                            reports=reports_json,
@@ -929,7 +944,7 @@ def admin_punishment_requests():
         flash("관리자 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
-    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(PunishmentSchedule.timestamp.asc()).all()
+    pending_requests = PunishmentSchedule.query.filter_by(status='pending').order_by(db.desc(PunishmentSchedule.timestamp)).all()
     all_schedules = PunishmentSchedule.query.order_by(db.desc(PunishmentSchedule.timestamp)).all()
 
     return render_template('admin_punishment_requests.html', 
@@ -1035,7 +1050,7 @@ def request_reschedule(schedule_id):
             new_requested_datetime = datetime.strptime(new_requested_datetime_str, '%Y-%m-%dT%H:%M')
         except ValueError:
             flash("유효한 새로운 날짜 및 시간을 입력해주세요.", 'error')
-            return redirect(url_for('request_reschedule', schedule_id=schedule_id))
+            return redirect(url_for('request_punishment'))
 
         # 기존 요청 상태를 'rescheduled'로 변경하고 새로운 요청으로 기록
         schedule.status = 'rescheduled'
@@ -1228,7 +1243,7 @@ def weight():
         # 2주간 1kg 이상 증가 시 벌점 로직은 check_daily_weekly_penalties로 이동
         return redirect(url_for('weight'))
 
-    today = datetime.now().date()
+    today = datetime.now().date();
     start_of_week = today - timedelta(days=today.weekday()) 
     end_of_week = start_of_week + timedelta(days=6)
 
