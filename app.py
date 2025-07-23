@@ -182,6 +182,15 @@ class PunishmentSchedule(db.Model):
         return f'<PunishmentSchedule {self.id} by {self.user.username} - {self.status}>'
     
     def to_dict(self):
+        # evidence_filenames는 이미 JSON 문자열로 저장되어 있으므로, 로드 시점에 파싱합니다.
+        # to_dict()는 템플릿으로 데이터를 넘길 때 사용되므로, 여기서 리스트로 변환합니다.
+        try:
+            parsed_filenames = json.loads(self.evidence_filenames) if self.evidence_filenames else []
+        except json.JSONDecodeError:
+            # JSON 파싱 실패 시 빈 리스트 또는 오류 처리
+            parsed_filenames = []
+            print(f"Error decoding evidence_filenames for schedule {self.id}: {self.evidence_filenames}") # 디버깅을 위한 출력
+
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -193,7 +202,7 @@ class PunishmentSchedule(db.Model):
             'approved_datetime': self.approved_datetime.isoformat() if self.approved_datetime else None, 
             'timestamp': self.timestamp.isoformat(),
             'username': self.user.username if self.user else None,
-            'evidence_filenames': json.loads(self.evidence_filenames), 
+            'evidence_filenames': parsed_filenames, # 파싱된 리스트를 반환
             'evidence_uploaded': self.evidence_uploaded
         }
 
@@ -397,7 +406,7 @@ def commute_auth():
 
 @app.route('/commute_auth_history') 
 def commute_auth_history(): 
-    if 'user_id' not in session: 
+    if 'user_id' not in session or session.get('role') != 'sub':
         flash("이력을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
@@ -594,7 +603,7 @@ def check_daily_weekly_penalties():
                 related_date=date(prev_year, prev_month, 1) 
             )
             db.session.add(new_penalty)
-            flash(f"지난달 소액결제 한도 초과로 벌점 {new_penalty.penalty_points}점이 부과되었습니다!", 'warning')
+            flash(f"지난달 소액결제 한도 초과로 벌점 {new_penalty.penalty_points}점이 부과되었습니다.", 'warning')
     
     current_week_start = today - timedelta(days=today.weekday())
     last_week_start_for_weight = current_week_start - timedelta(days=7)
