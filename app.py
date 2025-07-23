@@ -349,7 +349,7 @@ def commute_auth():
 
         auth_content = request.form.get('commute_auth_content') 
         is_late_checkbox = request.form.get('is_late_checkbox') == 'on' 
-        is_holiday_checkbox = request.form.get('is_holiday_checkbox') == 'on' 
+        is_holiday_checkbox = request.form.get('is_holiday') == 'on' # is_holiday_checkbox -> is_holiday 수정
         now = datetime.now()
         
         is_late_penalty = False
@@ -397,7 +397,7 @@ def commute_auth():
 
 @app.route('/commute_auth_history') 
 def commute_auth_history(): 
-    if 'user_id' not in session or session.get('role') != 'sub':
+    if 'user_id' not in session: 
         flash("이력을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
@@ -920,57 +920,68 @@ def request_reschedule(schedule_id):
 
     return render_template('request_reschedule.html', schedule=schedule)
 
+@app.route('/upload_punishment_evidence', methods=['GET'])
 @app.route('/upload_punishment_evidence/<int:schedule_id>', methods=['GET', 'POST'])
-def upload_punishment_evidence(schedule_id):
+def upload_punishment_evidence(schedule_id=None):
     if 'user_id' not in session or session.get('role') != 'sub':
         flash("증거를 업로드할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
-    schedule = PunishmentSchedule.query.get_or_404(schedule_id)
+    user_id = session['user_id']
 
-    if schedule.user_id != session['user_id']:
-        flash("본인의 일정에 대한 증거만 업로드할 수 있습니다.", 'error')
-        return redirect(url_for('home'))
+    if schedule_id is None: # 일정 목록 보여주기
+        schedules = PunishmentSchedule.query.filter(
+            PunishmentSchedule.user_id == user_id,
+            PunishmentSchedule.status.in_(['approved', 'rescheduled', 'evidence_uploaded']) # 승인되거나 연기 요청되었거나 증거 업로드된 일정
+        ).order_by(db.desc(PunishmentSchedule.requested_datetime)).all()
+        return render_template('upload_punishment_evidence.html', schedules=schedules, schedule_id=None, datetime=datetime) # datetime 전달
     
-    if schedule.status in ['completed', 'rejected']:
-        flash("이미 완료되었거나 거절된 일정에는 증거를 업로드할 수 없습니다.", 'warning')
-        return redirect(url_for('home'))
+    else: # 특정 일정에 대한 증거 업로드/보기
+        schedule = PunishmentSchedule.query.get_or_404(schedule_id)
 
-    if request.method == 'POST':
-        files = request.files.getlist('evidence_files') 
+        if schedule.user_id != session['user_id']:
+            flash("본인의 일정에 대한 증거만 업로드할 수 있습니다.", 'error')
+            return redirect(url_for('home'))
         
-        if not files or all(f.filename == '' for f in files):
-            flash("증거 파일은 필수입니다. 3개 이상의 사진 또는 동영상을 업로드해주세요.", 'error')
-            return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
-        
-        uploaded_filenames = []
-        for file in files:
-            if file and allowed_file(file.filename):
-                filename = save_uploaded_file(file)
-                if filename:
-                    uploaded_filenames.append(filename)
-            else:
-                flash(f"허용되지 않는 파일 형식입니다. ({file.filename})", 'warning')
+        if request.method == 'POST':
+            if schedule.status in ['completed', 'rejected']:
+                flash("이미 완료되었거나 거절된 일정에는 증거를 업로드할 수 없습니다.", 'warning')
                 return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
+
+            files = request.files.getlist('evidence_files') 
+            
+            if not files or all(f.filename == '' for f in files):
+                flash("증거 파일은 필수입니다. 3개 이상의 사진 또는 동영상을 업로드해주세요.", 'error')
+                return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
+            
+            uploaded_filenames = []
+            for file in files:
+                if file and allowed_file(file.filename):
+                    filename = save_uploaded_file(file)
+                    if filename:
+                        uploaded_filenames.append(filename)
+                else:
+                    flash(f"허용되지 않는 파일 형식입니다. ({file.filename})", 'warning')
+                    return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
+            
+            if len(uploaded_filenames) < 3:
+                flash("증거 파일은 최소 3개 이상이어야 합니다.", 'error')
+                for fname in uploaded_filenames:
+                    os.remove(os.path.join(app.config['UPLOAD_FOLDER'], fname))
+                return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
+
+            current_evidence = json.loads(schedule.evidence_filenames)
+            schedule.evidence_filenames = json.dumps(current_evidence + uploaded_filenames)
+            schedule.evidence_uploaded = True 
+            schedule.status = 'evidence_uploaded' 
+
+            db.session.commit()
+            flash("증거 파일이 성공적으로 업로드되었습니다. 관리자의 확인을 기다려주세요.", 'success')
+            return redirect(url_for('home'))
         
-        if len(uploaded_filenames) < 3:
-            flash("증거 파일은 최소 3개 이상이어야 합니다.", 'error')
-            for fname in uploaded_filenames:
-                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], fname))
-            return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
+        current_evidence_files = json.loads(schedule.evidence_filenames) if schedule.evidence_filenames else []
 
-        current_evidence = json.loads(schedule.evidence_filenames)
-        schedule.evidence_filenames = json.dumps(current_evidence + uploaded_filenames)
-        schedule.evidence_uploaded = True 
-        schedule.status = 'evidence_uploaded' 
-
-        db.session.commit()
-        flash("증거 파일이 성공적으로 업로드되었습니다. 관리자의 확인을 기다려주세요.", 'success')
-        return redirect(url_for('home'))
-    
-    current_evidence_files = json.loads(schedule.evidence_filenames) if schedule.evidence_filenames else []
-
-    return render_template('upload_punishment_evidence.html', schedule=schedule, current_evidence_files=current_evidence_files)
+        return render_template('upload_punishment_evidence.html', schedule=schedule, current_evidence_files=current_evidence_files, schedule_id=schedule_id, datetime=datetime) # datetime 전달
 
 @app.route('/payments', methods=['GET', 'POST'])
 def payments():

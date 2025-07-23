@@ -1,58 +1,76 @@
 {% extends "base.html" %}
 
-{% block title %}보고서 제출 및 생활 관리{% endblock %}
+{% block title %}홈{% endblock %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto">
-  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">보고서 제출 및 생활 관리</h2>
-  
-  <!-- 출근인증 제출 기능 -->
-  <div class="mb-10 p-6 border border-gray-200 rounded-lg bg-gray-50">
-    <h3 class="text-2xl font-semibold text-gray-700 mb-4">출근인증 제출</h3>
-    <p class="text-gray-600 text-sm mb-4">출근인증을 제출해주세요. 미제출 시 벌점이 부과됩니다. 지각 또는 휴무 여부를 직접 체크해주세요.</p>
-    <a href="{{ url_for('commute_auth') }}" 
-       class="w-full inline-block text-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md">
-      출근인증 제출하기
-    </a>
-    <div class="mt-4 text-center">
-      <a href="{{ url_for('commute_auth_history') }}" class="inline-block text-blue-600 hover:underline font-medium">나의 출근인증 이력 보기</a>
-    </div>
-  </div>
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl mx-auto text-center">
+  <h2 class="text-3xl font-bold text-gray-800 mb-6">환영합니다, {{ session['username'] }}님!</h2>
 
-  <!-- 새로운 기능으로 이동하는 링크들 -->
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <a href="{{ url_for('penalties') }}" class="block p-6 bg-red-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-red-700 mb-2">벌점 내역</h3>
-      <p class="text-gray-600 text-sm">벌점 기록 및 총 벌점 확인</p>
-    </a>
-    <a href="{{ url_for('request_punishment') }}" class="block p-6 bg-pink-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-pink-700 mb-2">체벌/교육 일정 요청</h3>
-      <p class="text-gray-600 text-sm">희망 일시 및 도구 선택</p>
-    </a>
-    <a href="{{ url_for('calendar_view') }}" class="block p-6 bg-blue-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-blue-700 mb-2">캘린더 보기</h3>
-      <p class="text-gray-600 text-sm">기상, 벌점, 정산 일정 확인</p>
-    </a>
-    <a href="{{ url_for('payments') }}" class="block p-6 bg-purple-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-purple-700 mb-2">소액결제 관리</h3>
-      <p class="text-gray-600 text-sm">월별 한도 관리 및 내역 기록</p>
-    </a>
-    <a href="{{ url_for('cardio') }}" class="block p-6 bg-orange-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-orange-700 mb-2">유산소 운동 인증</h3>
-      <p class="text-gray-600 text-sm">주간 인증 및 사진 업로드</p>
-    </a>
-    <a href="{{ url_for('weight') }}" class="block p-6 bg-yellow-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-yellow-700 mb-2">체중 관리</h3>
-      <p class="text-gray-600 text-sm">주간 체중 기록 및 그래프</p>
-    </a>
-    {# 주간 출근표 업로드 탭 링크 제거 (기능 삭제) #}
-    {# <a href="{{ url_for('upload_commute_schedule') }}" class="block p-6 bg-teal-50 rounded-xl shadow-md hover:shadow-lg transition duration-300 transform hover:-translate-y-1">
-      <h3 class="text-xl font-semibold text-teal-700 mb-2">주간 출근표 업로드</h3>
-      <p class="text-gray-600 text-sm">매주 출근 시간표 파일 업로드</p>
-    </a> #}
-  </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="mb-6">
+        {% for category, message in messages %}
+          <div class="p-3 rounded-lg text-sm {% if category == 'success' %}bg-green-100 text-green-700{% elif category == 'error' %}bg-red-100 text-red-700{% elif category == 'warning' %}bg-yellow-100 text-yellow-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
 
-  {# 하단 내비게이션 링크 제거됨 (top_nav 매크로에 포함) #}
+  <div class="space-y-4">
+    {% if session.get('role') == 'sub' %}
+      <a href="{{ url_for('commute_auth') }}" class="block w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition duration-300 shadow-md">
+        출근인증 제출
+      </a>
+      <a href="{{ url_for('payments') }}" class="block w-full bg-purple-500 text-white py-3 rounded-lg font-semibold hover:bg-purple-600 transition duration-300 shadow-md">
+        소액결제 명세서 제출
+      </a>
+      <a href="{{ url_for('cardio') }}" class="block w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition duration-300 shadow-md">
+        유산소 운동 인증
+      </a>
+      <a href="{{ url_for('weight') }}" class="block w-full bg-yellow-500 text-white py-3 rounded-lg font-semibold hover:bg-yellow-600 transition duration-300 shadow-md">
+        체중 기록
+      </a>
+      <a href="{{ url_for('request_punishment') }}" class="block w-full bg-pink-500 text-white py-3 rounded-lg font-semibold hover:bg-pink-600 transition duration-300 shadow-md">
+        체벌/교육 일정 요청
+      </a>
+      <a href="{{ url_for('upload_punishment_evidence') }}" class="block w-full bg-indigo-500 text-white py-3 rounded-lg font-semibold hover:bg-indigo-600 transition duration-300 shadow-md">
+        체벌/교육 증거 업로드
+      </a>
+      <a href="{{ url_for('penalties') }}" class="block w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition duration-300 shadow-md">
+        벌점 내역 보기
+        {% if show_penalty_warning %}<span class="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">!</span>{% endif %}
+      </a>
+      <a href="{{ url_for('calendar_view') }}" class="block w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition duration-300 shadow-md">
+        캘린더 보기
+      </a>
+    {% endif %}
+
+    {% if session.get('role') == 'owner' %}
+      <a href="{{ url_for('admin_dashboard') }}" class="block w-full bg-blue-700 text-white py-3 rounded-lg font-semibold hover:bg-blue-800 transition duration-300 shadow-md">
+        관리자 대시보드
+      </a>
+      <a href="{{ url_for('admin_punishment_requests') }}" class="block w-full bg-pink-700 text-white py-3 rounded-lg font-semibold hover:bg-pink-800 transition duration-300 shadow-md">
+        체벌/교육 요청 관리
+      </a>
+      <a href="{{ url_for('admin_data_management') }}" class="block w-full bg-gray-700 text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition duration-300 shadow-md">
+        댕댕님 모든 기록 관리 (삭제 기능 포함)
+      </a>
+      <a href="{{ url_for('calendar_view') }}" class="block w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition duration-300 shadow-md">
+        캘린더 보기
+      </a>
+      <form action="{{ url_for('check_daily_weekly_penalties') }}" method="post" class="mt-4">
+        <button type="submit" class="w-full bg-red-600 text-white py-2 rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md text-sm">
+          수동 벌점 확인 (유산소, 소액결제, 체중)
+        </button>
+      </form>
+    {% endif %}
+
+    <a href="{{ url_for('logout') }}" class="block w-full bg-gray-300 text-gray-800 py-3 rounded-lg font-semibold hover:bg-gray-400 transition duration-300 shadow-md mt-6">
+      로그아웃
+    </a>
+  </div>
 </div>
 {% endblock %}
 
