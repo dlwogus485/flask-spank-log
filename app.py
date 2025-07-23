@@ -762,7 +762,8 @@ def calendar_view():
                            payments=payments_json, 
                            cardio_logs=cardio_logs_json, 
                            weight_entries=weight_entries_json, 
-                           commute_schedules=commute_schedules_json) 
+                           commute_schedules=commute_schedules_json,
+                           datetime=datetime) # datetime 전달
 
 @app.route('/request_punishment', methods=['GET', 'POST'])
 def request_punishment():
@@ -923,27 +924,32 @@ def request_reschedule(schedule_id):
 @app.route('/upload_punishment_evidence', methods=['GET'])
 @app.route('/upload_punishment_evidence/<int:schedule_id>', methods=['GET', 'POST'])
 def upload_punishment_evidence(schedule_id=None):
-    if 'user_id' not in session or session.get('role') != 'sub':
-        flash("증거를 업로드할 권한이 없습니다.", 'error')
+    if 'user_id' not in session or (session.get('role') != 'sub' and session.get('role') != 'owner'): # owner도 GET 허용
+        flash("증거 관련 페이지에 접근할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
     
     user_id = session['user_id']
+    user_role = session.get('role')
 
     if schedule_id is None: # 일정 목록 보여주기
         schedules = PunishmentSchedule.query.filter(
             PunishmentSchedule.user_id == user_id,
             PunishmentSchedule.status.in_(['approved', 'rescheduled', 'evidence_uploaded']) # 승인되거나 연기 요청되었거나 증거 업로드된 일정
         ).order_by(db.desc(PunishmentSchedule.requested_datetime)).all()
-        return render_template('upload_punishment_evidence.html', schedules=schedules, schedule_id=None, datetime=datetime) # datetime 전달
+        return render_template('upload_punishment_evidence.html', schedules=schedules, schedule_id=None, datetime=datetime, user_role=user_role) # datetime 전달
     
     else: # 특정 일정에 대한 증거 업로드/보기
         schedule = PunishmentSchedule.query.get_or_404(schedule_id)
 
-        if schedule.user_id != session['user_id']:
-            flash("본인의 일정에 대한 증거만 업로드할 수 있습니다.", 'error')
+        if user_role == 'sub' and schedule.user_id != user_id:
+            flash("본인의 일정에 대한 증거만 업로드/볼 수 있습니다.", 'error')
             return redirect(url_for('home'))
         
         if request.method == 'POST':
+            if user_role != 'sub': # POST는 sub만 허용
+                flash("증거를 업로드할 권한이 없습니다.", 'error')
+                return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
+
             if schedule.status in ['completed', 'rejected']:
                 flash("이미 완료되었거나 거절된 일정에는 증거를 업로드할 수 없습니다.", 'warning')
                 return redirect(url_for('upload_punishment_evidence', schedule_id=schedule_id))
@@ -981,7 +987,7 @@ def upload_punishment_evidence(schedule_id=None):
         
         current_evidence_files = json.loads(schedule.evidence_filenames) if schedule.evidence_filenames else []
 
-        return render_template('upload_punishment_evidence.html', schedule=schedule, current_evidence_files=current_evidence_files, schedule_id=schedule_id, datetime=datetime) # datetime 전달
+        return render_template('upload_punishment_evidence.html', schedule=schedule, current_evidence_files=current_evidence_files, schedule_id=schedule_id, datetime=datetime, user_role=user_role) # datetime, user_role 전달
 
 @app.route('/payments', methods=['GET', 'POST'])
 def payments():
