@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}증거 보기{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-4xl mx-auto">
+    <h2 class="text-3xl font-bold text-center text-gray-800 mb-2">체벌/교육 증거 보기</h2>
+    <p class="text-center text-gray-500 mb-8">요청 ID: {{ schedule.id }}</p>
+
+    <div class="bg-gray-50 p-6 rounded-lg mb-8 border border-gray-200">
+        <h3 class="text-xl font-semibold text-gray-700 mb-4">요청 정보</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-600">
+            <p><strong>팸키:</strong> {{ schedule.user.username }}</p>
+            <p><strong>요청 날짜:</strong> {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>상태:</strong> {{ schedule.status }}</p>
+            <p><strong>사유:</strong> {{ schedule.reason }}</p>
+        </div>
+    </div>
+
+    <div>
+        <h3 class="text-2xl font-semibold text-gray-700 mb-6">제출된 증거</h3>
+        {% if evidence_files %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for filename in evidence_files %}
+                    <div class="border rounded-lg overflow-hidden shadow-sm">
+                        {% set file_ext = filename.split('.')[-1].lower() %}
+                        {% if file_ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                            <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank">
+                                <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="증거 이미지" class="w-full h-48 object-cover hover:opacity-90 transition-opacity">
+                            </a>
+                            <div class="p-2 text-center bg-gray-50 text-xs text-gray-600 truncate" title="{{ filename }}">
+                                <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank" class="hover:underline">
+                                    {{ filename }}
+                                </a>
+                            </div>
+                        {% elif file_ext in ['mp4', 'mov', 'avi', 'webm'] %}
+                            <video controls class="w-full h-48 object-cover bg-black">
+                                <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/{{ file_ext }}">
+                                브라우저가 비디오 태그를 지원하지 않습니다.
+                            </video>
+                             <div class="p-2 text-center bg-gray-50 text-xs text-gray-600 truncate" title="{{ filename }}">
+                                <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank" class="hover:underline">
+                                    {{ filename }}
+                                </a>
+                            </div>
+                        {% else %}
+                            <div class="p-4 text-center flex flex-col justify-center items-center h-full">
+                                <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank" class="text-blue-600 hover:underline">{{ filename }}</a>
+                                <p class="text-sm text-gray-500 mt-2">(지원되지 않는 파일 형식)</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center font-medium">
+                업로드된 증거 파일이 없습니다.
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mt-8 text-center">
+        <a href="{{ url_for('admin_punishment_requests') }}" class="bg-gray-600 text-white py-2 px-6 rounded-lg font-semibold hover:bg-gray-700 transition duration-300">
+            목록으로 돌아가기
+        </a>
+    </div>
+</div>
+{% endblock %}
