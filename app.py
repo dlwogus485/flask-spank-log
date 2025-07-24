@@ -185,9 +185,14 @@ class PunishmentSchedule(db.Model):
         # evidence_filenames는 이미 JSON 문자열로 저장되어 있으므로, 로드 시점에 파싱합니다.
         # to_dict()는 템플릿으로 데이터를 넘길 때 사용되므로, 여기서 리스트로 변환합니다.
         try:
+            # 저장된 문자열이 유효한 JSON 배열인지 확인하고 파싱
             parsed_filenames = json.loads(self.evidence_filenames) if self.evidence_filenames else []
+            # 파싱된 결과가 리스트가 아니면 빈 리스트로 처리 (안전 장치)
+            if not isinstance(parsed_filenames, list):
+                parsed_filenames = []
+                print(f"Warning: evidence_filenames for schedule {self.id} is not a valid JSON list: {self.evidence_filenames}") # 디버깅을 위한 출력
         except json.JSONDecodeError:
-            # JSON 파싱 실패 시 빈 리스트 또는 오류 처리
+            # JSON 파싱 실패 시 빈 리스트로 처리
             parsed_filenames = []
             print(f"Error decoding evidence_filenames for schedule {self.id}: {self.evidence_filenames}") # 디버깅을 위한 출력
 
@@ -406,7 +411,7 @@ def commute_auth():
 
 @app.route('/commute_auth_history') 
 def commute_auth_history(): 
-    if 'user_id' not in session or session.get('role') != 'sub':
+    if 'user_id' not in session: 
         flash("이력을 조회할 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
 
@@ -603,11 +608,14 @@ def check_daily_weekly_penalties():
                 related_date=date(prev_year, prev_month, 1) 
             )
             db.session.add(new_penalty)
-            flash(f"지난달 소액결제 한도 초과로 벌점 {new_penalty.penalty_points}점이 부과되었습니다.", 'warning')
+            flash(f"지난달 소액결제 한도 초과로 벌점 {new_penalty.penalty_points}점이 부과되었습니다!", 'warning')
     
     current_week_start = today - timedelta(days=today.weekday())
     last_week_start_for_weight = current_week_start - timedelta(days=7)
     week_before_last_start_for_weight = current_week_start - timedelta(days=14)
+
+    # weight_change 변수를 여기서 초기화합니다.
+    weight_change = 0.0 # 기본값을 0.0으로 설정
 
     if today.weekday() == 0 and not Penalty.query.filter(
         Penalty.user_id == user_id,
@@ -1192,4 +1200,3 @@ def weight():
 if __name__ == '__main__':
     init_db()
     # app.run(debug=True, host='0.0.0.0', port=5000) 
-

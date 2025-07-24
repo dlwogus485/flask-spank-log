@@ -31,7 +31,7 @@
                             </p>
                             {% if schedule_item.approved_datetime %}
                                 <p class="text-gray-700 text-sm mt-1">
-                                    <strong>확정일시:</strong> {{ schedule_item.approved_datetime.strftime('%Y년 %m월 %d일 %H시 %M분') }}
+                                    <strong>확정일시:</strong> {{ datetime.fromisoformat(schedule_item.approved_datetime).strftime('%Y년 %m월 %d일 %H시 %M분') }}
                                 </p>
                             {% endif %}
                             <p class="text-gray-800 mt-1"><strong>사유:</strong> {{ schedule_item.reason }}</p>
@@ -172,4 +172,3 @@
     </div>
 </div>
 {% endblock %}
-
