@@ -3,30 +3,41 @@
 {% block title %}캘린더 보기{% endblock %}
 
 {% block content %}
-<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
-  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">캘린더 보기</h2>
-
-  <div class="mb-8 p-6 border rounded-lg bg-gray-50">
-    <div class="flex justify-between items-center mb-4">
-      <button id="prevMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600">&lt; 이전 달</button>
-      <h3 id="currentMonthYear" class="text-xl font-semibold"></h3>
-      <button id="nextMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600">다음 달 &gt;</button>
+<div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg w-full max-w-4xl mx-auto">
+  <div id="calendar-container" class="flex flex-col lg:flex-row gap-8">
+    
+    <!-- 왼쪽: 캘린더 -->
+    <div class="flex-grow">
+      <div class="flex justify-between items-center mb-6">
+        <button id="prevMonth" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </button>
+        <h2 id="currentMonthYear" class="text-2xl font-bold text-gray-800"></h2>
+        <button id="nextMonth" class="p-2 rounded-full hover:bg-gray-100 transition-colors">
+          <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+      </div>
+      <div class="grid grid-cols-7 text-center text-sm font-semibold text-gray-500 mb-2">
+        <div class="py-2">일</div>
+        <div class="py-2">월</div>
+        <div class="py-2">화</div>
+        <div class="py-2">수</div>
+        <div class="py-2">목</div>
+        <div class="py-2">금</div>
+        <div class="py-2">토</div>
+      </div>
+      <div id="calendarGrid" class="grid grid-cols-7 gap-1">
+        <!-- JS로 날짜 채우기 -->
+      </div>
     </div>
-    <div class="grid grid-cols-7 text-center font-bold text-gray-700 mb-2">
-      <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+
+    <!-- 오른쪽: 선택된 날짜의 기록 -->
+    <div class="lg:w-80 lg:border-l lg:pl-8">
+      <h3 class="text-xl font-bold text-gray-800 mb-4" id="selectedDateEventsHeader">기록</h3>
+      <div id="selectedDateEventsList" class="space-y-3 h-96 overflow-y-auto pr-2">
+        <div class="text-center text-gray-500 pt-16">날짜를 선택해주세요.</div>
+      </div>
     </div>
-    <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
-  </div>
-
-  <div class="p-6 border rounded-lg bg-gray-50">
-    <h3 class="text-xl font-semibold mb-4" id="selectedDateEventsHeader">선택된 날짜의 기록</h3>
-    <ul id="selectedDateEventsList" class="space-y-4">
-      <li class="text-center text-gray-600">날짜를 선택해주세요.</li>
-    </ul>
-  </div>
-
-  <div class="mt-8 text-center">
-    <a href="{{ url_for('home') }}" class="text-blue-600 hover:underline">홈으로</a>
   </div>
 </div>
 
@@ -41,6 +52,7 @@
 
     let currentMonth = new Date().getMonth();
     let currentYear = new Date().getFullYear();
+    let selectedDateKey = null;
 
     const eventsData = {
         reports: {{ reports | tojson | safe }},
@@ -52,7 +64,7 @@
         weight_entries: {{ weight_entries | tojson | safe }}
     };
 
-    const eventsByDate = {}; 
+    const eventsByDate = {};
 
     const organizeDataByDate = () => {
         const process = (items, dateField, type) => {
@@ -88,35 +100,59 @@
       for (let day = 1; day <= daysInMonth; day++) {
         const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayCell = document.createElement('div');
-        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'min-h-[80px]'); 
-        dayCell.textContent = day;
+        dayCell.classList.add('h-24', 'p-2', 'rounded-lg', 'cursor-pointer', 'transition-colors', 'flex', 'flex-col', 'border', 'border-gray-200', 'hover:bg-blue-50');
         dayCell.dataset.date = dateKey; 
-        const dayEvents = eventsByDate[dateKey];
-        if (dayEvents) {
-            if (dayEvents.schedules) dayCell.classList.add('bg-pink-200');
-            if (dayEvents.penalties) dayCell.classList.add('bg-red-200');
-            if (dayEvents.reports && dayEvents.reports.some(r => r.is_holiday)) dayCell.classList.add('bg-gray-200');
+        
+        let dayNumberClass = "font-semibold text-gray-700";
+        if (new Date(dateKey).toDateString() === new Date().toDateString()) {
+            dayNumberClass = "font-bold text-white bg-blue-500 rounded-full w-7 h-7 flex items-center justify-center";
         }
-        if (new Date(dateKey).toDateString() === new Date().toDateString()) dayCell.classList.add('ring-2', 'ring-blue-500');
+        dayCell.innerHTML = `<div class="${dayNumberClass}">${day}</div>`;
+
+        const dayEvents = eventsByDate[dateKey];
+        let indicatorsHTML = '<div class="flex-grow flex flex-wrap content-start gap-1 mt-2">';
+        if (dayEvents) {
+            if (dayEvents.schedules) indicatorsHTML += '<div class="w-2 h-2 bg-pink-500 rounded-full" title="체벌/교육"></div>';
+            if (dayEvents.penalties) indicatorsHTML += '<div class="w-2 h-2 bg-red-500 rounded-full" title="벌점"></div>';
+            if (dayEvents.resets) indicatorsHTML += '<div class="w-2 h-2 bg-teal-500 rounded-full" title="벌점 리셋"></div>';
+            if (dayEvents.reports && !dayEvents.reports.some(r => r.is_holiday)) indicatorsHTML += '<div class="w-2 h-2 bg-green-500 rounded-full" title="출근인증"></div>';
+            if (dayEvents.cardio_logs) indicatorsHTML += '<div class="w-2 h-2 bg-orange-500 rounded-full" title="유산소"></div>';
+            if (dayEvents.payments) indicatorsHTML += '<div class="w-2 h-2 bg-purple-500 rounded-full" title="소액결제"></div>';
+            if (dayEvents.weight_entries) indicatorsHTML += '<div class="w-2 h-2 bg-yellow-500 rounded-full" title="체중"></div>';
+            if (dayEvents.reports && dayEvents.reports.some(r => r.is_holiday)) dayCell.classList.add('bg-gray-100', 'text-gray-400');
+        }
+        indicatorsHTML += '</div>';
+        dayCell.innerHTML += indicatorsHTML;
+        
+        if (dateKey === selectedDateKey) {
+            dayCell.classList.add('bg-blue-100', 'border-blue-400');
+        }
+
         dayCell.addEventListener('click', () => {
+          selectedDateKey = dateKey;
+          document.querySelectorAll('#calendarGrid > div').forEach(d => d.classList.remove('bg-blue-100', 'border-blue-400'));
+          dayCell.classList.add('bg-blue-100', 'border-blue-400');
           displayEventsForDate(dateKey);
-          document.querySelectorAll('.calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected', 'bg-blue-300'));
-          dayCell.classList.add('calendar-day-selected', 'bg-blue-300');
         });
         calendarGrid.appendChild(dayCell);
       }
     }
 
     function displayEventsForDate(dateKey) {
-        selectedDateEventsHeader.textContent = `${dateKey}의 기록`;
+        selectedDateEventsHeader.textContent = `${dateKey} 기록`;
         selectedDateEventsList.innerHTML = ''; 
         const events = eventsByDate[dateKey];
         let hasContent = false;
 
-        const createListItem = (className, content) => {
+        const createListItem = (icon, title, details, colorClass) => {
             const li = document.createElement('li');
-            li.className = `p-3 rounded-lg ${className}`;
-            li.innerHTML = content;
+            li.className = `flex items-start p-3 rounded-lg ${colorClass}`;
+            li.innerHTML = `
+                <div class="w-8 h-8 flex-shrink-0 mr-3 flex items-center justify-center bg-white rounded-full shadow-sm">${icon}</div>
+                <div>
+                    <p class="font-semibold text-gray-800">${title}</p>
+                    <p class="text-sm text-gray-600">${details}</p>
+                </div>`;
             selectedDateEventsList.appendChild(li);
             hasContent = true;
         };
@@ -124,21 +160,21 @@
         if (events) {
             if (events.schedules) events.schedules.forEach(s => {
                 const statusMap = {'pending': '대기', 'approved': '예정', 'completed': '완료', 'evidence_uploaded': '증거 확인중', 'rejected': '거절', 'rescheduled': '연기 요청'};
-                createListItem('bg-pink-100', `<p class="font-semibold text-pink-700">체벌/교육 ${statusMap[s.status] || s.status}</p><p class="text-sm mt-1">${s.reason}</p>`);
+                createListItem('📅', `체벌/교육 ${statusMap[s.status] || s.status}`, s.reason, 'bg-pink-100');
             });
-            if (events.resets) events.resets.forEach(pr => createListItem('bg-teal-100', `<p class="font-semibold text-teal-700">벌점 리셋</p><p class="text-sm mt-1">${pr.reset_points}점 (사유: ${pr.reset_reason})</p>`));
-            if (events.penalties) events.penalties.forEach(p => createListItem('bg-red-100', `<p class="font-semibold text-red-700">벌점: ${p.penalty_type}</p><p class="text-sm mt-1">${p.penalty_points}점 (사유: ${p.reason || '없음'})</p>`));
-            if (events.cardio_logs) events.cardio_logs.forEach(c => createListItem('bg-orange-100', `<p class="font-semibold text-orange-700">유산소 운동 인증</p>`));
-            if (events.payments) events.payments.forEach(p => createListItem('bg-purple-100', `<p class="font-semibold text-purple-700">소액결제</p><p class="text-sm mt-1">${p.description || '내역 없음'} - ${p.amount.toLocaleString()}원</p>`));
-            if (events.weight_entries) events.weight_entries.forEach(w => createListItem('bg-yellow-100', `<p class="font-semibold text-yellow-700">체중 기록</p><p class="text-sm mt-1">${w.weight_kg} kg</p>`));
+            if (events.resets) events.resets.forEach(pr => createListItem('♻️', '벌점 리셋', `${pr.reset_points}점 (사유: ${pr.reset_reason})`, 'bg-teal-100'));
+            if (events.penalties) events.penalties.forEach(p => createListItem('❗️', `벌점: ${p.penalty_type}`, `${p.penalty_points}점 (사유: ${p.reason || '없음'})`, 'bg-red-100'));
+            if (events.cardio_logs) events.cardio_logs.forEach(c => createListItem('🏃', '유산소 운동 인증', `인증 완료`, 'bg-orange-100'));
+            if (events.payments) events.payments.forEach(p => createListItem('💳', '소액결제', `${p.description || '내역 없음'} - ${p.amount.toLocaleString()}원`, 'bg-purple-100'));
+            if (events.weight_entries) events.weight_entries.forEach(w => createListItem('⚖️', '체중 기록', `${w.weight_kg} kg`, 'bg-yellow-100'));
             if (events.reports) events.reports.forEach(r => {
-                if(r.is_holiday) createListItem('bg-gray-100', `<p class="font-semibold text-gray-700">✅ 휴무일</p>`);
-                else createListItem('bg-green-100', `<p class="font-semibold text-green-700">출근인증 ${r.is_late ? '<span class="text-red-500">(지각)</span>' : ''}</p><p class="text-sm mt-1">${r.content}</p>`);
+                if(r.is_holiday) createListItem('🎉', '휴무일', '휴무로 기록되었습니다.', 'bg-gray-100');
+                else createListItem('✅', `출근인증 ${r.is_late ? '<span class="text-red-500">(지각)</span>' : ''}`, r.content, 'bg-green-100');
             });
         }
       
         if (!hasContent) {
-            selectedDateEventsList.innerHTML = '<li class="text-center text-gray-600">이 날짜에는 기록이 없습니다.</li>';
+            selectedDateEventsList.innerHTML = '<div class="text-center text-gray-500 pt-16">이 날짜에는 기록이 없습니다.</div>';
         }
     }
 
