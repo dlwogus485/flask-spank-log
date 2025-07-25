@@ -160,8 +160,42 @@ def home():
     if 'user_id' not in session: return redirect(url_for('login'))
     if session.get('role') == 'owner': return redirect(url_for('admin_dashboard'))
     
-    total_penalty = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=session['user_id']).scalar() or 0
-    return render_template('index.html', show_penalty_warning=(total_penalty > 0 and total_penalty % 5 == 0))
+    user_id = session['user_id']
+    today = date.today()
+
+    total_penalty_points = db.session.query(func.sum(Penalty.penalty_points)).filter_by(user_id=user_id).scalar() or 0
+    
+    upcoming_schedule = PunishmentSchedule.query.filter(
+        PunishmentSchedule.user_id == user_id,
+        PunishmentSchedule.status.in_(['approved', 'evidence_uploaded'])
+    ).order_by(PunishmentSchedule.requested_datetime.asc()).first()
+
+    latest_weight = WeightEntry.query.filter_by(user_id=user_id).order_by(WeightEntry.timestamp.desc()).first()
+
+    start_of_week = today - timedelta(days=today.weekday())
+    weekly_cardio_count = Cardio.query.filter(
+        Cardio.user_id == user_id,
+        Cardio.date.between(start_of_week, today)
+    ).count()
+
+    # [로직 수정] "지난달 결제액" -> "이번 달에 제출된 결제액"으로 변경
+    current_month = today.month
+    current_year = today.year
+    last_month_payment_total = db.session.query(func.sum(Payment.amount)).filter(
+        Payment.user_id == user_id,
+        extract('year', Payment.timestamp) == current_year,
+        extract('month', Payment.timestamp) == current_month
+    ).scalar() or 0
+    
+    last_commute = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).first()
+
+    return render_template('index.html', 
+                           total_penalty_points=total_penalty_points,
+                           upcoming_schedule=upcoming_schedule,
+                           latest_weight=latest_weight,
+                           weekly_cardio_count=weekly_cardio_count,
+                           last_month_payment_total=last_month_payment_total,
+                           last_commute=last_commute)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
