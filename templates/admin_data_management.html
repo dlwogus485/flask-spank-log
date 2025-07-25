@@ -11,101 +11,76 @@
   <form id="adminDeleteForm" action="{{ url_for('delete_admin_selected_data') }}" method="post">
     <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-red-50">
       <h3 class="text-xl font-semibold text-red-800 mb-4">선택된 기록 삭제</h3>
-      <p class="text-gray-700 text-sm mb-4">아래 각 섹션에서 삭제할 항목을 선택한 후 이 버튼을 클릭하세요.</p>
+      <p class="text-gray-700 text-sm mb-4">아래 각 섹션에서 삭제할 항목을 선택한 후 이 버튼을 클릭하세요. (주의: 체벌/교육 기록을 삭제하면 업로드된 증거 파일도 함께 영구 삭제됩니다.)</p>
       <button type="button" id="deleteSelectedButton"
               class="w-full bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition duration-300 shadow-md">
-        선택 삭제
+        선택한 전체 기록 삭제
       </button>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- 소액결제 기록 -->
-      <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">
-        <h3 class="text-xl font-semibold text-purple-800 mb-4">소액결제 기록</h3>
-        {% if payments %}
-          <ul class="space-y-3">
-            {% for item in payments %}
-              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                <div class="flex items-center mb-2">
-                  <input type="checkbox" name="delete_items" value="payment_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                  <span class="font-medium text-gray-700">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+    <div class="space-y-6">
+      <!-- [수정] 체벌/교육 기록 (사진 개별 삭제 기능 추가) -->
+      <div class="bg-pink-50 p-6 rounded-xl shadow-sm border border-pink-200">
+        <h3 class="text-xl font-semibold text-pink-800 mb-4">체벌/교육 기록</h3>
+        {% if punishment_schedules %}
+          <ul class="space-y-4">
+            {% for schedule in punishment_schedules %}
+              <li class="bg-white p-4 rounded-lg shadow-sm border">
+                <div class="flex items-start mb-3">
+                  <input type="checkbox" name="delete_items" value="punishment_{{ schedule.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 rounded">
+                  <div>
+                    <p class="font-medium text-gray-800">{{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }} - {{ schedule.reason }}</p>
+                    <p class="text-sm text-gray-600">상태: {{ schedule.status }} | 요청 벌점: {{ schedule.points_to_resolve }}점</p>
+                  </div>
                 </div>
-                <p class="text-gray-800 text-sm">{{ item.description | default('설명 없음') }} - {{ format_currency(item.amount | int) }}원</p>
-                {% if item.image_filename %}
-                  <a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-2 inline-block">명세서 다운로드</a>
+                {% if schedule.evidence_filenames_list %}
+                  <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 border-t pt-3">
+                    {% for filename in schedule.evidence_filenames_list %}
+                      <div class="relative group">
+                        <img src="{{ url_for('uploaded_file', filename=filename) }}" class="w-full h-24 object-cover rounded-md">
+                        <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <form action="{{ url_for('delete_evidence_file', schedule_id=schedule.id, filename=filename) }}" method="post" onsubmit="return confirm('이 파일을 정말 삭제하시겠습니까?');">
+                            <button type="submit" class="text-white text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded-md">삭제</button>
+                          </form>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
                 {% endif %}
               </li>
             {% endfor %}
           </ul>
         {% else %}
-          <p class="text-center text-gray-600">기록된 소액결제 내역이 없습니다.</p>
+          <p class="text-center text-gray-600">기록된 체벌/교육 내역이 없습니다.</p>
         {% endif %}
       </div>
 
-      <!-- 유산소 운동 기록 -->
-      <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
-        <h3 class="text-xl font-semibold text-orange-800 mb-4">유산소 운동 기록</h3>
-        {% if cardio_logs %}
-          <ul class="space-y-3">
-            {% for item in cardio_logs %}
-              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                <div class="flex items-center mb-2">
-                  <input type="checkbox" name="delete_items" value="cardio_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                  <span class="font-medium text-gray-700">{{ item.date.strftime('%Y-%m-%d') }}</span>
-                </div>
-                <p class="text-gray-800 text-sm">기록 시간: {{ item.timestamp.strftime('%H:%M') }}</p>
-                {% if item.image_filename %}
-                  <a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-2 inline-block">사진 다운로드</a>
-                {% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="text-center text-gray-600">기록된 유산소 운동이 없습니다.</p>
-        {% endif %}
-      </div>
+      <!-- 기존 기록 관리 섹션들 -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 소액결제 기록 -->
+        <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200">
+          <h3 class="text-xl font-semibold text-purple-800 mb-4">소액결제 기록</h3>
+          {% if payments %}<ul class="space-y-3">{% for item in payments %}<li class="bg-white p-3 rounded-lg shadow-sm border flex flex-col"><div class="flex items-center mb-2"><input type="checkbox" name="delete_items" value="payment_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 rounded"><span class="font-medium text-gray-700">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span></div><p class="text-gray-800 text-sm">{{ item.description | default('설명 없음') }} - {{ format_currency(item.amount | int) }}원</p>{% if item.image_filename %}<a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-2 inline-block">명세서 다운로드</a>{% endif %}</li>{% endfor %}</ul>{% else %}<p class="text-center text-gray-600">기록된 소액결제 내역이 없습니다.</p>{% endif %}
+        </div>
 
-      <!-- 체중 기록 -->
-      <div class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
-        <h3 class="text-xl font-semibold text-yellow-800 mb-4">체중 기록</h3>
-        {% if weight_entries %}
-          <ul class="space-y-3">
-            {% for item in weight_entries %}
-              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-col">
-                <div class="flex items-center mb-2">
-                  <input type="checkbox" name="delete_items" value="weight_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                  <span class="font-medium text-gray-700">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-                </div>
-                <p class="text-gray-800 text-sm">체중: {{ item.weight_kg }}kg</p>
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="text-center text-gray-600">기록된 체중이 없습니다.</p>
-        {% endif %}
-      </div>
+        <!-- 유산소 운동 기록 -->
+        <div class="bg-orange-50 p-6 rounded-xl shadow-sm border border-orange-200">
+          <h3 class="text-xl font-semibold text-orange-800 mb-4">유산소 운동 기록</h3>
+          {% if cardio_logs %}<ul class="space-y-3">{% for item in cardio_logs %}<li class="bg-white p-3 rounded-lg shadow-sm border flex flex-col"><div class="flex items-center mb-2"><input type="checkbox" name="delete_items" value="cardio_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 rounded"><span class="font-medium text-gray-700">{{ item.date.strftime('%Y-%m-%d') }}</span></div><p class="text-gray-800 text-sm">기록 시간: {{ item.timestamp.strftime('%H:%M') }}</p>{% if item.image_filename %}<a href="{{ url_for('uploaded_file', filename=item.image_filename) }}" target="_blank" class="text-blue-500 hover:underline text-xs mt-2 inline-block">사진 다운로드</a>{% endif %}</li>{% endfor %}</ul>{% else %}<p class="text-center text-gray-600">기록된 유산소 운동이 없습니다.</p>{% endif %}
+        </div>
 
-      {# 벌점 기록 섹션 추가 #}
-      <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200 lg:col-span-3"> {# 3열 전체를 차지하도록 col-span-3 추가 #}
-        <h3 class="text-xl font-semibold text-red-800 mb-4">벌점 기록</h3>
-        {% if penalties %}
-          <ul class="space-y-3">
-            {% for item in penalties %}
-              <li class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex items-center justify-between">
-                <div class="flex items-center">
-                  <input type="checkbox" name="delete_items" value="penalty_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                  <span class="font-medium text-gray-700 mr-3">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
-                </div>
-                <p class="text-gray-800 text-sm flex-1">{{ item.penalty_type }} ({{ item.penalty_points }}점)</p>
-                {% if item.reason %}<span class="text-gray-600 text-xs ml-auto">사유: {{ item.reason | truncate(30) }}</span>{% endif %}
-              </li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="text-center text-gray-600">기록된 벌점 내역이 없습니다.</p>
-        {% endif %}
+        <!-- 체중 기록 -->
+        <div class="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
+          <h3 class="text-xl font-semibold text-yellow-800 mb-4">체중 기록</h3>
+          {% if weight_entries %}<ul class="space-y-3">{% for item in weight_entries %}<li class="bg-white p-3 rounded-lg shadow-sm border flex flex-col"><div class="flex items-center mb-2"><input type="checkbox" name="delete_items" value="weight_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 rounded"><span class="font-medium text-gray-700">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span></div><p class="text-gray-800 text-sm">체중: {{ item.weight_kg }}kg</p></li>{% endfor %}</ul>{% else %}<p class="text-center text-gray-600">기록된 체중이 없습니다.</p>{% endif %}
+        </div>
+        
+        <!-- 벌점 기록 -->
+        <div class="bg-red-50 p-6 rounded-xl shadow-sm border border-red-200 lg:col-span-3">
+          <h3 class="text-xl font-semibold text-red-800 mb-4">벌점 기록</h3>
+          {% if penalties %}<ul class="space-y-3">{% for item in penalties %}<li class="bg-white p-3 rounded-lg shadow-sm border flex items-center justify-between"><div class="flex items-center"><input type="checkbox" name="delete_items" value="penalty_{{ item.id }}" class="mt-1 mr-3 h-5 w-5 text-red-600 rounded"><span class="font-medium text-gray-700 mr-3">{{ item.timestamp.strftime('%Y-%m-%d %H:%M') }}</span></div><p class="text-gray-800 text-sm flex-1">{{ item.penalty_type }} ({{ item.penalty_points }}점)</p>{% if item.reason %}<span class="text-gray-600 text-xs ml-auto">사유: {{ item.reason | truncate(30) }}</span>{% endif %}</li>{% endfor %}</ul>{% else %}<p class="text-center text-gray-600">기록된 벌점 내역이 없습니다.</p>{% endif %}
+        </div>
       </div>
-
     </div>
   </form>
 
@@ -118,22 +93,17 @@
   document.addEventListener('DOMContentLoaded', () => {
     const deleteSelectedButton = document.getElementById('deleteSelectedButton');
     const adminDeleteForm = document.getElementById('adminDeleteForm');
-
     if (deleteSelectedButton) {
       deleteSelectedButton.addEventListener('click', (event) => {
-        event.preventDefault(); // 기본 폼 제출 방지
-
+        event.preventDefault();
         const checkboxes = document.querySelectorAll('input[name="delete_items"]:checked');
         if (checkboxes.length === 0) {
-          window.showConfirmModal('삭제할 기록을 선택해주세요.', () => {}); 
+          alert('삭제할 기록을 선택해주세요.');
           return;
         }
-
-        window.showConfirmModal('선택한 기록을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.', (confirmed) => {
-          if (confirmed) {
-            adminDeleteForm.submit(); 
-          }
-        });
+        if (confirm('선택한 기록을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+          adminDeleteForm.submit(); 
+        }
       });
     }
   });

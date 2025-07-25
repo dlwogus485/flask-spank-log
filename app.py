@@ -12,7 +12,6 @@ app = Flask(__name__)
 # --- 기본 설정 ---
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'a_very_secret_key_that_is_long_and_random')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
-# [수정] 데이터베이스 경로를 instance 폴더로 명시적으로 지정하여 오류를 방지합니다.
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(app.instance_path, 'site.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -324,11 +323,26 @@ def admin_data_management():
     ddang_user = User.query.filter_by(username='ddang').first()
     if not ddang_user: return flash("댕댕님 계정을 찾을 수 없습니다.", 'error'), redirect(url_for('admin_dashboard'))
     ddang_user_id = ddang_user.id
+    
+    # [수정] 체벌/교육 기록도 함께 조회합니다.
+    punishment_schedules = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all()
+    for schedule in punishment_schedules:
+        try:
+            schedule.evidence_filenames_list = json.loads(schedule.evidence_filenames) if schedule.evidence_filenames else []
+        except (json.JSONDecodeError, TypeError):
+            schedule.evidence_filenames_list = []
+
     payments = Payment.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Payment.timestamp)).all()
     cardio_logs = Cardio.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Cardio.timestamp)).all()
     weight_entries = WeightEntry.query.filter_by(user_id=ddang_user_id).order_by(db.desc(WeightEntry.timestamp)).all()
     penalties = Penalty.query.filter_by(user_id=ddang_user_id).order_by(db.desc(Penalty.timestamp)).all() 
-    return render_template('admin_data_management.html', payments=payments, cardio_logs=cardio_logs, weight_entries=weight_entries, penalties=penalties) 
+    
+    return render_template('admin_data_management.html', 
+                           payments=payments, 
+                           cardio_logs=cardio_logs, 
+                           weight_entries=weight_entries, 
+                           penalties=penalties,
+                           punishment_schedules=punishment_schedules) 
 
 @app.route('/delete_admin_selected_data', methods=['POST'])
 def delete_admin_selected_data():
@@ -340,9 +354,20 @@ def delete_admin_selected_data():
     for item_str in request.form.getlist('delete_items'):
         try:
             item_type, item_id = item_str.split('_')
-            model_map = {'payment': Payment, 'cardio': Cardio, 'weight': WeightEntry, 'penalty': Penalty}
+            # [수정] 체벌/교육 기록 삭제 로직 추가
+            model_map = {'payment': Payment, 'cardio': Cardio, 'weight': WeightEntry, 'penalty': Penalty, 'punishment': PunishmentSchedule}
             record = model_map[item_type].query.filter_by(id=int(item_id), user_id=ddang_user_id).first()
             if record:
+                # [수정] 체벌/교육 기록 삭제 시, 연결된 파일도 함께 삭제
+                if item_type == 'punishment' and record.evidence_filenames:
+                    try:
+                        filenames = json.loads(record.evidence_filenames)
+                        for filename in filenames:
+                            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                            if os.path.exists(file_path):
+                                os.remove(file_path)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
                 db.session.delete(record)
                 deleted_count += 1
         except (ValueError, KeyError):
@@ -350,6 +375,43 @@ def delete_admin_selected_data():
     db.session.commit()
     flash(f"{deleted_count}개의 기록이 삭제되었습니다.", 'success')
     return redirect(url_for('admin_data_management'))
+
+# [추가] 관리자 증거 파일 개별 삭제 라우트
+@app.route('/delete_evidence/<int:schedule_id>/<filename>', methods=['POST'])
+def delete_evidence_file(schedule_id, filename):
+    if 'user_id' not in session or session.get('role') != 'owner':
+        return flash("권한이 없습니다.", 'error'), redirect(url_for('login'))
+    
+    schedule = PunishmentSchedule.query.get_or_404(schedule_id)
+    
+    try:
+        filenames_list = json.loads(schedule.evidence_filenames) if schedule.evidence_filenames else []
+        if filename in filenames_list:
+            # 파일 시스템에서 파일 삭제
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+            
+            # DB에서 파일 이름 제거
+            filenames_list.remove(filename)
+            schedule.evidence_filenames = json.dumps(filenames_list)
+            
+            # 파일이 하나도 없으면 상태 변경 (선택적)
+            if not filenames_list:
+                schedule.evidence_uploaded = False
+                if schedule.status == 'evidence_uploaded':
+                    schedule.status = 'approved' # 증거가 모두 삭제되면 다시 '승인' 상태로
+            
+            db.session.commit()
+            flash(f"파일 '{filename}'이(가) 삭제되었습니다.", 'success')
+        else:
+            flash("삭제할 파일을 찾을 수 없습니다.", 'error')
+    except (json.JSONDecodeError, TypeError, FileNotFoundError) as e:
+        flash(f"파일 삭제 중 오류 발생: {e}", 'error')
+        db.session.rollback()
+
+    return redirect(url_for('admin_data_management'))
+
 
 @app.route('/calendar_view') 
 def calendar_view():
@@ -457,9 +519,10 @@ def upload_punishment_evidence(schedule_id=None):
     if schedule_id is None:
         query = PunishmentSchedule.query
         if user_role == 'sub':
-            query = query.filter(PunishmentSchedule.user_id == session['user_id'], PunishmentSchedule.status.in_(['approved', 'rescheduled', 'evidence_uploaded']))
+            # [수정] 완료된 일정도 볼 수 있도록 status에 'completed' 추가
+            query = query.filter(PunishmentSchedule.user_id == session['user_id'], PunishmentSchedule.status.in_(['approved', 'rescheduled', 'evidence_uploaded', 'completed']))
         else:
-            query = query.filter(PunishmentSchedule.status == 'evidence_uploaded')
+            query = query.filter(PunishmentSchedule.status.in_(['evidence_uploaded', 'completed']))
         schedules = query.order_by(db.desc(PunishmentSchedule.requested_datetime)).all()
         return render_template('upload_punishment_evidence.html', schedules=schedules, schedule_id=None, user_role=user_role)
     else:
@@ -566,4 +629,3 @@ def init_db_command():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
