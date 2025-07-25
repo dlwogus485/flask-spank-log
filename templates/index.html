@@ -10,39 +10,32 @@
         <p class="text-gray-500 mt-1">오늘의 할 일을 확인하고 기록을 시작하세요.</p>
     </div>
 
-    <!-- 상단 고정 정보 요약 (더 세련되고 컴팩트하게) -->
+    <!-- 상단 고정 정보 요약 -->
     <div class="sticky top-6 bg-gray-800/95 backdrop-blur-lg p-4 rounded-2xl shadow-2xl shadow-gray-300 z-10 mb-12">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-2">
             <!-- 총 벌점 -->
-            <div class="flex items-center p-2">
-                <div class="bg-red-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
-                <div class="ml-3"><p class="text-xs text-gray-400">총 벌점</p><p class="text-lg font-bold text-white">{{ total_penalty_points }}점</p></div>
+            <div class="flex flex-col justify-center p-2 col-span-2 md:col-span-1 lg:col-span-2">
+                <div class="flex items-center">
+                    <div class="bg-red-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg></div>
+                    <div class="ml-3">
+                        <p class="text-xs text-gray-400">총 벌점</p>
+                        <p class="text-xl font-bold text-white">{{ total_penalty_points }}점</p>
+                    </div>
+                </div>
+                {% if latest_admin_penalty %}
+                <div class="mt-2 pl-1">
+                    <p class="text-xs text-red-300 truncate">"{{ latest_admin_penalty.reason }}" (+{{ latest_admin_penalty.penalty_points }}점)</p>
+                </div>
+                {% endif %}
             </div>
             <!-- 다음 일정 -->
-            <div class="flex items-center p-2">
-                <div class="bg-pink-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div>
-                <div class="ml-3"><p class="text-xs text-gray-400">다음 일정</p><p class="text-lg font-bold text-white">{{ upcoming_schedule.requested_datetime.strftime('%m/%d') if upcoming_schedule else '없음' }}</p></div>
-            </div>
+            <div class="flex items-center p-2"><div class="bg-pink-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg></div><div class="ml-3"><p class="text-xs text-gray-400">다음 일정</p><p class="text-lg font-bold text-white">{{ upcoming_schedule.requested_datetime.strftime('%m/%d') if upcoming_schedule else '없음' }}</p></div></div>
             <!-- 최근 체중 -->
-            <div class="flex items-center p-2">
-                <div class="bg-yellow-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l-6-2m0 0l-3 9m12-9l-3 9m0 0l6-2m-6 2l-3-1m-6-2l3-1m-3 1l-3 9"></path></svg></div>
-                <div class="ml-3"><p class="text-xs text-gray-400">최근 체중</p><p class="text-lg font-bold text-white">{{ latest_weight.weight_kg if latest_weight else 'N/A' }} kg</p></div>
-            </div>
+            <div class="flex items-center p-2"><div class="bg-yellow-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l-6-2m0 0l-3 9m12-9l-3 9m0 0l6-2m-6 2l-3-1m-6-2l3-1m-3 1l-3 9"></path></svg></div><div class="ml-3"><p class="text-xs text-gray-400">최근 체중</p><p class="text-lg font-bold text-white">{{ latest_weight.weight_kg if latest_weight else 'N/A' }} kg</p></div></div>
             <!-- 주간 유산소 -->
-            <div class="flex items-center p-2">
-                <div class="bg-green-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
-                <div class="ml-3"><p class="text-xs text-gray-400">주간 유산소</p><p class="text-lg font-bold text-white">{{ weekly_cardio_count }}/3 회</p></div>
-            </div>
+            <div class="flex items-center p-2"><div class="bg-green-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div><div class="ml-3"><p class="text-xs text-gray-400">주간 유산소</p><p class="text-lg font-bold text-white">{{ weekly_cardio_count }}/3 회</p></div></div>
             <!-- 지난달 결제 -->
-            <div class="flex items-center p-2">
-                <div class="bg-purple-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg></div>
-                <div class="ml-3"><p class="text-xs text-gray-400">지난달 결제</p><p class="text-lg font-bold text-white">{{ "{:,.0f}".format(last_month_payment_total) }}원</p></div>
-            </div>
-            <!-- 마지막 출근 -->
-            <div class="flex items-center p-2">
-                <div class="bg-blue-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                <div class="ml-3"><p class="text-xs text-gray-400">마지막 출근</p><p class="text-lg font-bold text-white">{{ last_commute.timestamp.strftime('%H:%M') if last_commute else '없음' }}</p></div>
-            </div>
+            <div class="flex items-center p-2"><div class="bg-purple-500/20 p-2 rounded-lg"><svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg></div><div class="ml-3"><p class="text-xs text-gray-400">지난달 결제</p><p class="text-lg font-bold text-white">{{ "{:,.0f}".format(last_month_payment_total) }}원</p></div></div>
         </div>
     </div>
 
@@ -51,36 +44,28 @@
         <h2 class="text-2xl font-bold text-gray-700 mb-4">메뉴 바로가기</h2>
         <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <a href="{{ url_for('commute_auth') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
-                <h3 class="font-bold text-gray-800 text-lg">출근인증 제출</h3>
-                <p class="text-sm text-gray-500 mt-1">오늘의 다짐과 함께 출근을 기록하세요.</p>
+                <h3 class="font-bold text-gray-800 text-lg">출근인증 제출</h3><p class="text-sm text-gray-500 mt-1">오늘의 다짐과 함께 출근을 기록하세요.</p>
             </a>
             <a href="{{ url_for('payments') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
-                <h3 class="font-bold text-gray-800 text-lg">소액결제 제출</h3>
-                <p class="text-sm text-gray-500 mt-1">결제 내역과 명세서를 제출합니다.</p>
+                <h3 class="font-bold text-gray-800 text-lg">소액결제 제출</h3><p class="text-sm text-gray-500 mt-1">결제 내역과 명세서를 제출합니다.</p>
             </a>
             <a href="{{ url_for('cardio') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
-                <h3 class="font-bold text-gray-800 text-lg">유산소 운동 인증</h3>
-                <p class="text-sm text-gray-500 mt-1">주 3회 목표를 달성하세요.</p>
+                <h3 class="font-bold text-gray-800 text-lg">유산소 운동 인증</h3><p class="text-sm text-gray-500 mt-1">주 3회 목표를 달성하세요.</p>
             </a>
             <a href="{{ url_for('weight') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
-                <h3 class="font-bold text-gray-800 text-lg">체중 기록</h3>
-                <p class="text-sm text-gray-500 mt-1">매일의 체중 변화를 기록합니다.</p>
+                <h3 class="font-bold text-gray-800 text-lg">체중 기록</h3><p class="text-sm text-gray-500 mt-1">매일의 체중 변화를 기록합니다.</p>
             </a>
             <a href="{{ url_for('request_punishment') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
-                <h3 class="font-bold text-gray-800 text-lg">체벌/교육 요청</h3>
-                <p class="text-sm text-gray-500 mt-1">벌점 차감을 위한 일정을 요청합니다.</p>
+                <h3 class="font-bold text-gray-800 text-lg">체벌/교육 요청</h3><p class="text-sm text-gray-500 mt-1">벌점 차감을 위한 일정을 요청합니다.</p>
             </a>
             <a href="{{ url_for('upload_punishment_evidence') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
-                <h3 class="font-bold text-gray-800 text-lg">증거 업로드</h3>
-                <p class="text-sm text-gray-500 mt-1">완료된 일정의 증거를 제출합니다.</p>
+                <h3 class="font-bold text-gray-800 text-lg">증거 업로드</h3><p class="text-sm text-gray-500 mt-1">완료된 일정의 증거를 제출합니다.</p>
             </a>
             <a href="{{ url_for('penalties') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300 col-span-2 lg:col-span-1">
-                <h3 class="font-bold text-gray-800 text-lg">벌점 내역 보기</h3>
-                <p class="text-sm text-gray-500 mt-1">현재까지의 모든 벌점을 확인합니다.</p>
+                <h3 class="font-bold text-gray-800 text-lg">벌점 내역 보기</h3><p class="text-sm text-gray-500 mt-1">현재까지의 모든 벌점을 확인합니다.</p>
             </a>
              <a href="{{ url_for('calendar_view') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300 col-span-2 lg:col-span-2">
-                <h3 class="font-bold text-gray-800 text-lg">전체 캘린더 보기</h3>
-                <p class="text-sm text-gray-500 mt-1">모든 활동 기록을 달력에서 한눈에 확인하세요.</p>
+                <h3 class="font-bold text-gray-800 text-lg">전체 캘린더 보기</h3><p class="text-sm text-gray-500 mt-1">모든 활동 기록을 달력에서 한눈에 확인하세요.</p>
             </a>
         </div>
     </div>

@@ -12,6 +12,7 @@ app = Flask(__name__)
 # --- 기본 설정 ---
 app.config['SECRET_KEY'] = os.environ.get('FLASK_SECRET_KEY', 'a_very_secret_key_that_is_long_and_random')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
+# [수정] 데이터베이스 경로를 instance 폴더로 명시적으로 지정하여 오류를 방지합니다.
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(app.instance_path, 'site.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -178,7 +179,6 @@ def home():
         Cardio.date.between(start_of_week, today)
     ).count()
 
-    # [로직 수정] "지난달 결제액" -> "이번 달에 제출된 결제액"으로 변경
     current_month = today.month
     current_year = today.year
     last_month_payment_total = db.session.query(func.sum(Payment.amount)).filter(
@@ -189,13 +189,16 @@ def home():
     
     last_commute = CommuteAuthReport.query.filter_by(user_id=user_id).order_by(CommuteAuthReport.timestamp.desc()).first()
 
+    latest_admin_penalty = Penalty.query.filter_by(user_id=user_id, penalty_type='관리자 부여').order_by(Penalty.timestamp.desc()).first()
+
     return render_template('index.html', 
                            total_penalty_points=total_penalty_points,
                            upcoming_schedule=upcoming_schedule,
                            latest_weight=latest_weight,
                            weekly_cardio_count=weekly_cardio_count,
                            last_month_payment_total=last_month_payment_total,
-                           last_commute=last_commute)
+                           last_commute=last_commute,
+                           latest_admin_penalty=latest_admin_penalty)
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -294,6 +297,26 @@ def admin_dashboard():
     last_auth = CommuteAuthReport.query.filter_by(user_id=ddang_user_id).order_by(db.desc(CommuteAuthReport.timestamp)).first()
     ddang_last_commute_auth = last_auth.timestamp.strftime('%Y-%m-%d %H:%M') if last_auth else "기록 없음"
     return render_template('dashboard.html', reports=all_reports, payments=all_payments, cardio_logs=all_cardio_logs, weight_entries=all_weight_entries, penalties=all_penalties, punishment_schedules=all_punishment_schedules, ddang_total_penalty=ddang_total_penalty, ddang_pending_punishments=ddang_pending_punishments, ddang_last_commute_auth=ddang_last_commute_auth)
+
+@app.route('/add_manual_penalty', methods=['POST'])
+def add_manual_penalty():
+    if 'user_id' not in session or session.get('role') != 'owner':
+        return flash("권한이 없습니다.", 'error'), redirect(url_for('login'))
+    ddang_user = User.query.filter_by(username='ddang').first()
+    if not ddang_user:
+        return flash("댕댕님 계정을 찾을 수 없습니다.", 'error'), redirect(url_for('admin_dashboard'))
+    try:
+        points = int(request.form.get('points'))
+        reason = request.form.get('reason')
+        if not reason or points <= 0:
+            return flash("벌점과 사유를 올바르게 입력해주세요.", 'error'), redirect(url_for('admin_dashboard'))
+        new_penalty = Penalty(user_id=ddang_user.id, penalty_type='관리자 부여', reason=reason, penalty_points=points)
+        db.session.add(new_penalty)
+        db.session.commit()
+        flash(f"벌점 {points}점이 성공적으로 부과되었습니다.", 'success')
+    except (ValueError, TypeError):
+        flash("벌점은 숫자로 입력해야 합니다.", 'error')
+    return redirect(url_for('admin_dashboard'))
 
 @app.route('/admin_data_management')
 def admin_data_management():
