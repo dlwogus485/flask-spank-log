@@ -28,28 +28,14 @@
                             <p class="text-gray-700 font-medium">
                                 <strong>요청일시:</strong> {{ schedule_item.requested_datetime.strftime('%Y년 %m월 %d일 %H시 %M분') }}
                             </p>
-                            {% if schedule_item.approved_datetime %}
-                                <p class="text-gray-700 text-sm mt-1">
-                                    <strong>확정일시:</strong> {{ schedule_item.approved_datetime.strftime('%Y년 %m월 %d일 %H시 %M분') }}
-                                </p>
-                            {% endif %}
                             <p class="text-gray-800 mt-1"><strong>사유:</strong> {{ schedule_item.reason }}</p>
                             <p class="text-gray-700 text-sm mt-1"><strong>상태:</strong> {{ schedule_item.status }}</p>
                         </div>
                         <div>
-                            {% if user_role == 'sub' %}
-                                {% if schedule_item.status in ['approved', 'rescheduled'] %}
-                                    <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule_item.id) }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-300 text-sm">
-                                        증거 업로드
-                                    </a>
-                                {% elif schedule_item.status == 'evidence_uploaded' %}
-                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full">증거 업로드 완료</span>
-                                    <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule_item.id) }}" class="text-blue-500 hover:underline text-sm ml-2">증거 보기</a>
-                                {% else %}
-                                    <span class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">업로드 불가</span>
-                                {% endif %}
-                            {% elif user_role == 'owner' and schedule_item.status == 'evidence_uploaded' %}
-                                <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule_item.id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300 text-sm">증거 보기</a>
+                            {% if user_role == 'sub' and schedule_item.status in ['approved', 'rescheduled'] %}
+                                <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule_item.id) }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">증거 업로드</a>
+                            {% elif schedule_item.status == 'evidence_uploaded' %}
+                                <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule_item.id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">증거 보기</a>
                             {% else %}
                                 <span class="px-3 py-1 bg-gray-100 text-gray-800 text-xs font-semibold rounded-full">해당 없음</span>
                             {% endif %}
@@ -57,85 +43,53 @@
                     </div>
                 {% endfor %}
             {% else %}
-                <div class="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center font-medium">
-                    현재 증거를 업로드할 수 있는 체벌/교육 일정이 없습니다.
-                </div>
+                <div class="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center">현재 증거를 업로드/조회할 수 있는 일정이 없습니다.</div>
             {% endif %}
         </div>
 
     {% elif schedule %}
         <div class="bg-gray-50 p-6 rounded-lg border border-gray-200 mb-6">
             <h3 class="text-xl font-semibold text-gray-800 mb-3">선택된 체벌/교육 일정</h3>
-            <p class="text-gray-700 text-sm mb-2"><strong>요청일시:</strong> {{ schedule.requested_datetime.strftime('%Y년 %m월 %d일 %H시 %M분') }}</p>
-            {% if schedule.approved_datetime %}
-                <p class="text-gray-700 text-sm mb-2"><strong>확정일시:</strong> {{ schedule.approved_datetime.strftime('%Y년 %m월 %d일 %H시 %M분') }}</p>
-            {% endif %}
-            <p class="text-gray-700 text-sm mb-2"><strong>사유:</strong> {{ schedule.reason }}</p>
-            <p class="text-gray-700 text-sm"><strong>상태:</strong> {{ schedule.status }}</p>
+            <p><strong>요청일시:</strong> {{ schedule.requested_datetime.strftime('%Y년 %m월 %d일 %H시 %M분') }}</p>
+            <p><strong>사유:</strong> {{ schedule.reason }}</p>
+            <p><strong>상태:</strong> {{ schedule.status }}</p>
         </div>
 
-        {% if schedule.evidence_uploaded or user_role == 'owner' %}
-            <div class="bg-blue-100 p-4 rounded-lg text-blue-700 text-center font-medium mb-6">
-                {% if user_role == 'sub' %}
-                    이미 증거가 업로드된 일정입니다. 관리자의 확인을 기다려주세요.
-                {% else %}
-                    이 일정의 증거 파일입니다.
-                {% endif %}
-            </div>
-
-            {% if schedule.evidence_filenames %}
-                <div class="mb-6">
-                    <h4 class="text-lg font-semibold text-gray-800 mb-3">업로드된 증거 파일:</h4>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {% for filename in schedule.evidence_filenames %}
-                            {% if filename and '.' in filename %}
-                                <div class="border rounded-lg overflow-hidden shadow-sm">
-                                    {% if filename.split('.')[-1] in ['mp4', 'mov', 'avi'] %}
-                                        <video controls class="w-full h-32 object-cover rounded-t-lg">
-                                            <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/{{ filename.split('.')[-1] }}">
-                                            Your browser does not support the video tag.
-                                        </video>
-                                    {% else %}
-                                        <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="증거 이미지" class="w-full h-32 object-cover rounded-t-lg">
-                                    {% endif %}
-                                    <div class="p-2 text-center text-xs text-gray-600 truncate">
-                                        <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank" class="text-blue-500 hover:underline">
-                                            {{ filename }}
-                                        </a>
-                                    </div>
-                                </div>
+        <!-- [수정] schedule.evidence_filenames 대신 evidence_files 변수를 사용합니다. -->
+        {% if evidence_files %}
+            <div class="mb-6">
+                <h4 class="text-lg font-semibold text-gray-800 mb-3">업로드된 증거 파일:</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {% for filename in evidence_files %}
+                        <div class="border rounded-lg overflow-hidden shadow-sm">
+                            {% if filename.split('.')[-1].lower() in ['mp4', 'mov', 'avi'] %}
+                                <video controls class="w-full h-32 object-cover">
+                                    <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/{{ filename.split('.')[-1].lower() }}">
+                                    브라우저가 비디오 태그를 지원하지 않습니다.
+                                </video>
+                            {% else %}
+                                <img src="{{ url_for('uploaded_file', filename=filename) }}" alt="증거 이미지" class="w-full h-32 object-cover">
                             {% endif %}
-                        {% endfor %}
-                    </div>
+                            <div class="p-2 text-center text-xs text-gray-600 truncate">
+                                <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank" class="text-blue-500 hover:underline">{{ filename }}</a>
+                            </div>
+                        </div>
+                    {% endfor %}
                 </div>
-            {% else %}
-                <div class="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center font-medium">업로드된 증거 파일이 없습니다.</div>
-            {% endif %}
+            </div>
+        {% elif user_role == 'owner' or schedule.status == 'evidence_uploaded' %}
+             <div class="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center font-medium">업로드된 증거 파일이 없습니다.</div>
         {% endif %}
 
-        {% if user_role == 'sub' and schedule.status in ['approved', 'rescheduled'] and not schedule.evidence_uploaded %}
+        {% if user_role == 'sub' and schedule.status in ['approved', 'rescheduled'] %}
             <form action="{{ url_for('upload_punishment_evidence', schedule_id=schedule.id) }}" method="post" enctype="multipart/form-data" class="space-y-6">
                 <div>
-                    <label for="evidence_files" class="block text-lg font-medium text-gray-700 mb-2">
-                        증거 파일 업로드 (최소 3개 이상의 사진 또는 동영상)
-                    </label>
-                    <input type="file" name="evidence_files" id="evidence_files" multiple accept="image/*,video/*"
-                        class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none">
-                    <p class="mt-1 text-sm text-gray-500">사진 (png, jpg, jpeg, gif) 또는 동영상 (mp4, mov, avi) 파일을 업로드하세요.</p>
+                    <label for="evidence_files" class="block text-lg font-medium text-gray-700 mb-2">증거 파일 업로드 (최소 3개)</label>
+                    <input type="file" name="evidence_files" id="evidence_files" multiple required accept="image/*,video/*" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50">
                 </div>
-                <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition duration-300 shadow-md">
-                    증거 업로드
-                </button>
+                <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700">증거 업로드</button>
             </form>
-        {% elif user_role == 'sub' %}
-            <div class="bg-yellow-100 p-4 rounded-lg text-yellow-700 text-center font-medium">
-                이 일정은 현재 증거를 업로드할 수 있는 상태가 아닙니다 (상태: {{ schedule.status }}) .
-            </div>
         {% endif %}
-    {% else %}
-        <div class="bg-red-100 p-4 rounded-lg text-red-700 text-center font-medium">
-            유효한 체벌/교육 일정이 선택되지 않았습니다.
-        </div>
     {% endif %}
 
     <div class="mt-8 text-center">
@@ -143,3 +97,4 @@
     </div>
 </div>
 {% endblock %}
+

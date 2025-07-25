@@ -46,88 +46,41 @@
     let currentMonth = new Date().getMonth();
     let currentYear = new Date().getFullYear();
 
-    // Data from Flask (convert to a more usable format)
-    const reportsData = JSON.parse('{{ reports | tojson | safe }}'); 
-    const penaltiesData = JSON.parse('{{ penalties | tojson | safe }}'); 
-    const punishmentSchedulesData = JSON.parse('{{ punishment_schedules | tojson | safe }}'); 
-    const penaltyResetHistoryData = JSON.parse('{{ penalty_reset_history | tojson | safe }}'); 
-    const paymentsData = JSON.parse('{{ payments | tojson | safe }}'); 
-    const cardioLogsData = JSON.parse('{{ cardio_logs | tojson | safe }}'); 
-    const weightEntriesData = JSON.parse('{{ weight_entries | tojson | safe }}'); 
+    const eventsData = {
+        reports: {{ reports | tojson | safe }},
+        penalties: {{ penalties | tojson | safe }},
+        schedules: {{ punishment_schedules | tojson | safe }},
+        resets: {{ penalty_reset_history | tojson | safe }},
+        payments: {{ payments | tojson | safe }},
+        cardio_logs: {{ cardio_logs | tojson | safe }},
+        weight_entries: {{ weight_entries | tojson | safe }}
+    };
 
     const eventsByDate = {}; 
 
-    function addEventToDate(dateKey, type, eventData) {
-        if (!eventsByDate[dateKey]) {
-            eventsByDate[dateKey] = { reports: [], penalties: [], schedules: [], resets: [], payments: [], cardio_logs: [], weight_entries: [] }; 
-        }
-        eventsByDate[dateKey][type].push(eventData);
-    }
-
-    // Organize data by date for easy lookup
-    reportsData.forEach(r => {
-        const date = new Date(r.timestamp);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'reports', r);
-    });
-
-    penaltiesData.forEach(p => {
-        const date = new Date(p.timestamp); 
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'penalties', p);
-    });
-
-    punishmentSchedulesData.forEach(s => {
-        const date = new Date(s.requested_datetime); // 캘린더에는 요청일자를 기준으로 표시
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'schedules', s);
-    });
-
-    penaltyResetHistoryData.forEach(pr => {
-        const date = new Date(pr.reset_date); 
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0'); 
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'resets', pr);
-    });
-
-    paymentsData.forEach(p => { 
-        const date = new Date(p.timestamp);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'payments', p);
-    });
-
-    cardioLogsData.forEach(c => { 
-        const date = new Date(c.date); 
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'cardio_logs', c);
-    });
-
-    weightEntriesData.forEach(w => { 
-        const date = new Date(w.timestamp);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-        addEventToDate(dateKey, 'weight_entries', w);
-    });
-
+    const organizeDataByDate = () => {
+        const process = (items, dateField, type) => {
+            if (!items) return;
+            items.forEach(item => {
+                const dateStr = item[dateField];
+                if (!dateStr) return;
+                const date = new Date(dateStr);
+                const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                if (!eventsByDate[dateKey]) eventsByDate[dateKey] = {};
+                if (!eventsByDate[dateKey][type]) eventsByDate[dateKey][type] = [];
+                eventsByDate[dateKey][type].push(item);
+            });
+        };
+        process(eventsData.reports, 'timestamp', 'reports');
+        process(eventsData.penalties, 'timestamp', 'penalties');
+        process(eventsData.schedules, 'requested_datetime', 'schedules');
+        process(eventsData.resets, 'reset_date', 'resets');
+        process(eventsData.payments, 'timestamp', 'payments');
+        process(eventsData.cardio_logs, 'date', 'cardio_logs');
+        process(eventsData.weight_entries, 'timestamp', 'weight_entries');
+    };
+    
+    organizeDataByDate();
 
     function renderCalendar() {
       calendarGrid.innerHTML = ''; 
@@ -139,67 +92,44 @@
 
       for (let i = 0; i < startingDayOfWeek; i++) {
         const emptyCell = document.createElement('div');
-        emptyCell.classList.add('p-2', 'text-center', 'bg-gray-100', 'rounded-md');
         calendarGrid.appendChild(emptyCell);
       }
 
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(currentYear, currentMonth, day);
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        const dateKey = `${yyyy}-${mm}-${dd}`;
-
+        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayCell = document.createElement('div');
-        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'transition', 'duration-150', 'ease-in-out', 'flex', 'flex-col', 'items-center', 'justify-center', 'min-h-[60px]'); 
+        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'transition', 'duration-150', 'flex', 'flex-col', 'items-center', 'justify-center', 'min-h-[80px]'); 
         dayCell.textContent = day;
         dayCell.dataset.date = dateKey; 
 
-        let hasEvent = false;
         const dayEvents = eventsByDate[dateKey];
+        let eventIndicatorsHTML = '';
         
         if (dayEvents) {
-            if (dayEvents.reports.some(r => r.is_holiday)) { 
-                dayCell.classList.add('bg-gray-300', 'hover:bg-gray-400', 'font-semibold', 'text-gray-900');
-                hasEvent = true;
-            }
-            else if (dayEvents.schedules.length > 0) { 
-                dayCell.classList.add('bg-pink-300', 'hover:bg-pink-400', 'font-semibold', 'text-pink-900');
-                hasEvent = true;
-            } else if (dayEvents.penalties.length > 0) { 
-                dayCell.classList.add('bg-red-200', 'hover:bg-red-300', 'font-semibold', 'text-red-800');
-                hasEvent = true;
-            } else if (dayEvents.resets.length > 0) { 
-                dayCell.classList.add('bg-teal-200', 'hover:bg-teal-300', 'font-semibold', 'text-teal-800');
-                hasEvent = true;
-            } else if (dayEvents.reports.length > 0) { 
-                dayCell.classList.add('bg-green-200', 'hover:bg-green-300', 'font-semibold', 'text-green-800');
-                hasEvent = true;
-            } else if (dayEvents.payments.length > 0) { 
-                dayCell.classList.add('bg-purple-200', 'hover:bg-purple-300', 'font-semibold', 'text-purple-800');
-                hasEvent = true;
-            } else if (dayEvents.cardio_logs.length > 0) { 
-                dayCell.classList.add('bg-orange-200', 'hover:bg-orange-300', 'font-semibold', 'text-orange-800');
-                hasEvent = true;
-            } else if (dayEvents.weight_entries.length > 0) { 
-                dayCell.classList.add('bg-yellow-200', 'hover:bg-yellow-300', 'font-semibold', 'text-yellow-800');
-                hasEvent = true;
-            } 
+            if (dayEvents.schedules) eventIndicatorsHTML += '<div class="w-2 h-2 bg-pink-500 rounded-full mt-1"></div>';
+            if (dayEvents.penalties) eventIndicatorsHTML += '<div class="w-2 h-2 bg-red-500 rounded-full mt-1"></div>';
+            if (dayEvents.resets) eventIndicatorsHTML += '<div class="w-2 h-2 bg-teal-500 rounded-full mt-1"></div>';
+            if (dayEvents.reports && !dayEvents.reports.some(r => r.is_holiday)) eventIndicatorsHTML += '<div class="w-2 h-2 bg-green-500 rounded-full mt-1"></div>';
+            // [추가] 유산소 운동, 소액결제, 체중 기록에 대한 점 표시
+            if (dayEvents.cardio_logs) eventIndicatorsHTML += '<div class="w-2 h-2 bg-orange-500 rounded-full mt-1"></div>';
+            if (dayEvents.payments) eventIndicatorsHTML += '<div class="w-2 h-2 bg-purple-500 rounded-full mt-1"></div>';
+            if (dayEvents.weight_entries) eventIndicatorsHTML += '<div class="w-2 h-2 bg-yellow-500 rounded-full mt-1"></div>';
+
+            if (dayEvents.reports && dayEvents.reports.some(r => r.is_holiday)) dayCell.classList.add('bg-gray-200', 'text-gray-500');
         }
         
-        if (!hasEvent) {
-          dayCell.classList.add('bg-white', 'hover:bg-gray-100', 'text-gray-700');
-        }
+        dayCell.innerHTML += `<div class="flex flex-wrap justify-center gap-1">${eventIndicatorsHTML}</div>`;
 
         const today = new Date();
         if (date.toDateString() === today.toDateString()) {
-          dayCell.classList.add('ring-2', 'ring-blue-500', 'font-bold');
+          dayCell.classList.add('ring-2', 'ring-blue-500');
         }
 
         dayCell.addEventListener('click', () => {
           displayEventsForDate(dateKey);
-          document.querySelectorAll('.calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected', 'bg-blue-400', 'text-white'));
-          dayCell.classList.add('calendar-day-selected', 'bg-blue-400', 'text-white');
+          document.querySelectorAll('.calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected', 'bg-blue-200'));
+          dayCell.classList.add('calendar-day-selected', 'bg-blue-200');
         });
         calendarGrid.appendChild(dayCell);
       }
@@ -208,225 +138,116 @@
     function displayEventsForDate(dateKey) {
       selectedDateEventsHeader.textContent = `${dateKey}의 기록`;
       selectedDateEventsList.innerHTML = ''; 
-
       const events = eventsByDate[dateKey];
+      let hasContent = false;
+
       if (events) {
-        let hasContent = false;
-
-        // 휴무일 기록
-        if (events.reports.some(r => r.is_holiday)) {
-            hasContent = true;
-            const listItem = document.createElement('li');
-            listItem.classList.add('bg-gray-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-gray-200');
-            listItem.innerHTML = `<p class="text-sm text-gray-700 font-semibold">✅ 휴무일입니다.</p>`;
-            selectedDateEventsList.appendChild(listItem);
-        }
-
         // 체벌/교육 일정
-        if (events.schedules.length > 0) {
+        if (events.schedules) {
             hasContent = true;
             events.schedules.forEach(s => {
                 const listItem = document.createElement('li');
-                listItem.classList.add('bg-pink-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-pink-200');
-                
-                const requestedTime = new Date(s.requested_datetime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                let approvedTimeText = '';
-                if (s.approved_datetime) {
-                    const approvedTime = new Date(s.approved_datetime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                    approvedTimeText = `<span class="text-xs text-gray-600 ml-1">(확정: ${approvedTime})</span>`; 
-                }
-                const statusText = {
-                    'pending': '대기 중',
-                    'approved': '확정됨',
-                    'rejected': '거절됨',
-                    'rescheduled': '연기 요청됨',
-                    'completed': '완료됨',
-                    'evidence_uploaded': '증거 업로드됨' 
-                }[s.status] || s.status;
-
-                let evidenceHtml = '';
-                if (s.evidence_uploaded && s.evidence_filenames && s.evidence_filenames.length > 0) {
-                    const fileItems = s.evidence_filenames.map(filename => {
-                        const fileExt = filename.split('.').pop().toLowerCase();
-                        const isVideo = ['mp4', 'mov', 'avi'].includes(fileExt);
-                        const fileUrl = `/uploads/${filename}`;
-                        return `
-                            <div class="border rounded-lg overflow-hidden shadow-sm">
-                                ${isVideo ? `
-                                    <video controls class="w-full h-24 object-cover rounded-md">
-                                        <source src="${fileUrl}" type="video/${fileExt}">
-                                        Your browser does not support the video tag.
-                                    </video>
-                                ` : `
-                                    <img src="${fileUrl}" alt="증거 이미지" class="w-full h-24 object-cover rounded-md">
-                                `}
-                                <div class="p-2 text-center text-xs text-gray-600 truncate">
-                                    <a href="${fileUrl}" target="_blank" class="text-blue-500 hover:underline">
-                                        ${filename}
-                                    </a>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
-                    evidenceHtml = `
-                        <div class="mt-2">
-                            <h5 class="text-xs font-semibold text-gray-700">증거 파일:</h5>
-                            <div class="grid grid-cols-2 gap-1 mt-1">
-                                ${fileItems}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                listItem.innerHTML = `
-                    <p class="text-sm text-pink-700 font-semibold">일정: ${statusText} (신청: ${requestedTime})${approvedTimeText}</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">요청 사유: ${s.reason}</p>
-                    ${s.requested_tool ? `<p class="text-gray-700 text-xs mt-1">희망 도구: ${s.requested_tool}</p>` : ''}
-                    ${s.admin_notes ? `<p class="text-gray-700 text-xs mt-1">관리자 메모: ${s.admin_notes}</p>` : ''}
-                    ${evidenceHtml}
-                `;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-
-        // 벌점
-        if (events.penalties.length > 0) {
-            hasContent = true;
-            events.penalties.forEach(p => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-red-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-red-200');
-                const timestamp = new Date(p.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                listItem.innerHTML = `
-                    <p class="text-sm text-red-700 font-semibold">벌점 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">${p.penalty_type} (${p.penalty_points}점)</p>
-                    ${p.reason ? `<p class="text-gray-700 text-xs mt-1">사유: ${p.reason}</p>` : ''}
-                    ${p.rule_name ? `<p class="text-gray-700 text-xs mt-1">규칙: ${p.rule_name}</p>` : ''}
-                `;
+                listItem.classList.add('bg-pink-100', 'p-3', 'rounded-lg');
+                const statusMap = {'pending': '체벌/교육 대기', 'approved': '체벌/교육 예정', 'completed': '체벌/교육 완료', 'evidence_uploaded': '증거 확인 대기중', 'rejected': '거절됨', 'rescheduled': '연기 요청됨'};
+                const statusText = statusMap[s.status] || s.status;
+                listItem.innerHTML = `<p class="font-semibold text-pink-700">${statusText}</p><p class="text-sm text-gray-700 mt-1">사유: ${s.reason}</p>`;
                 selectedDateEventsList.appendChild(listItem);
             });
         }
 
         // 벌점 리셋 이력
-        if (events.resets.length > 0) {
+        if (events.resets) {
             hasContent = true;
             events.resets.forEach(pr => {
                 const listItem = document.createElement('li');
-                listItem.classList.add('bg-teal-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-teal-200');
-                const timestamp = new Date(pr.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                listItem.innerHTML = `
-                    <p class="text-sm text-teal-700 font-semibold">벌점 리셋 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">사유: ${pr.reset_reason}</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">리셋된 벌점: ${pr.reset_points}점</p>
-                `;
+                listItem.classList.add('bg-teal-100', 'p-3', 'rounded-lg');
+                listItem.innerHTML = `<p class="font-semibold text-teal-700">벌점 리셋</p><p class="text-sm text-gray-700 mt-1">${pr.reset_points}점 리셋 (사유: ${pr.reset_reason})</p>`;
                 selectedDateEventsList.appendChild(listItem);
             });
         }
 
-        // 소액결제 기록 추가
-        if (events.payments.length > 0) {
+        // 벌점
+        if (events.penalties) {
             hasContent = true;
-            events.payments.forEach(p => {
+            events.penalties.forEach(p => {
                 const listItem = document.createElement('li');
-                listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-purple-200');
-                const timestamp = new Date(p.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                const imageUrl = "{{ url_for('uploaded_file', filename='') }}" + p.image_filename; 
-                listItem.innerHTML = `
-                    <p class="text-sm text-purple-700 font-semibold">소액결제 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">${p.description || '설명 없음'} - ${p.amount.toLocaleString()}원</p>
-                    ${p.image_filename ? `<a href="${imageUrl}" target="_blank" class="text-blue-500 hover:underline text-xs mt-1 inline-block">명세서 다운로드</a>` : ''}
-                `;
+                listItem.classList.add('bg-red-100', 'p-3', 'rounded-lg');
+                listItem.innerHTML = `<p class="font-semibold text-red-700">벌점: ${p.penalty_type}</p><p class="text-sm text-gray-700 mt-1">${p.penalty_points}점 (사유: ${p.reason || '없음'})</p>`;
                 selectedDateEventsList.appendChild(listItem);
             });
         }
-
-        // 유산소 운동 기록 추가
-        if (events.cardio_logs.length > 0) {
+        
+        // [추가] 유산소 운동 기록 표시
+        if (events.cardio_logs) {
             hasContent = true;
             events.cardio_logs.forEach(c => {
                 const listItem = document.createElement('li');
-                listItem.classList.add('bg-orange-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-orange-200');
-                const timestamp = new Date(c.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                const imageUrl = "{{ url_for('uploaded_file', filename='') }}" + c.image_filename; 
-                listItem.innerHTML = `
-                    <p class="text-sm text-orange-700 font-semibold">유산소 운동 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">날짜: ${new Date(c.date).toLocaleDateString('ko-KR')}</p>
-                    ${c.image_filename ? `<a href="${imageUrl}" target="_blank" class="text-blue-500 hover:underline text-xs mt-1 inline-block">사진 다운로드</a>` : ''}
-                `;
+                listItem.classList.add('bg-orange-100', 'p-3', 'rounded-lg');
+                const time = new Date(c.timestamp).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
+                listItem.innerHTML = `<p class="font-semibold text-orange-700">유산소 운동 인증 (${time})</p>`;
                 selectedDateEventsList.appendChild(listItem);
             });
         }
 
-        // 체중 기록 추가
-        if (events.weight_entries.length > 0) {
+        // [추가] 소액결제 기록 표시
+        if (events.payments) {
+            hasContent = true;
+            events.payments.forEach(p => {
+                const listItem = document.createElement('li');
+                listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg');
+                const time = new Date(p.timestamp).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
+                listItem.innerHTML = `<p class="font-semibold text-purple-700">소액결제 (${time})</p><p class="text-sm text-gray-700 mt-1">${p.description || '내역 없음'} - ${p.amount.toLocaleString()}원</p>`;
+                selectedDateEventsList.appendChild(listItem);
+            });
+        }
+
+        // [추가] 체중 기록 표시
+        if (events.weight_entries) {
             hasContent = true;
             events.weight_entries.forEach(w => {
                 const listItem = document.createElement('li');
-                listItem.classList.add('bg-yellow-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-yellow-200');
-                const timestamp = new Date(w.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                listItem.innerHTML = `
-                    <p class="text-sm text-yellow-700 font-semibold">체중 기록 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">체중: ${w.weight_kg}kg</p>
-                `;
+                listItem.classList.add('bg-yellow-100', 'p-3', 'rounded-lg');
+                const time = new Date(w.timestamp).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
+                listItem.innerHTML = `<p class="font-semibold text-yellow-700">체중 기록 (${time})</p><p class="text-sm text-gray-700 mt-1">${w.weight_kg} kg</p>`;
                 selectedDateEventsList.appendChild(listItem);
             });
         }
 
-        // 출근인증 (휴무일이 아닌 경우만 표시)
-        if (events.reports.length > 0 && !events.reports.some(r => r.is_holiday)) {
+        // 출근 인증
+        if (events.reports) {
             hasContent = true;
             events.reports.forEach(r => {
                 const listItem = document.createElement('li');
-                listItem.classList.add('bg-green-100', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-green-200');
-                const timestamp = new Date(r.timestamp);
-                const timeString = timestamp.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
-                listItem.innerHTML = `
-                    <p class="text-sm text-green-700 font-semibold">출근인증 (${timeString})</p>
-                    <p class="text-gray-800 leading-relaxed text-sm mt-1">${r.content}</p>
-                    ${r.is_late ? '<p class="text-red-600 font-bold text-xs mt-1">⚠️ 지각 제출</p>' : ''}
-                `;
+                if(r.is_holiday) {
+                    listItem.classList.add('bg-gray-100', 'p-3', 'rounded-lg');
+                    listItem.innerHTML = `<p class="font-semibold text-gray-700">✅ 휴무일</p>`;
+                } else {
+                    listItem.classList.add('bg-green-100', 'p-3', 'rounded-lg');
+                    listItem.innerHTML = `<p class="font-semibold text-green-700">출근인증 ${r.is_late ? '<span class="text-red-500">(지각)</span>' : ''}</p><p class="text-sm text-gray-700 mt-1">${r.content}</p>`;
+                }
                 selectedDateEventsList.appendChild(listItem);
             });
         }
-
-        if (!hasContent) {
-            const noEntry = document.createElement('li');
-            noEntry.classList.add('text-center', 'text-gray-600', 'text-lg');
-            noEntry.textContent = '이 날짜에는 기록이 없습니다.';
-            selectedDateEventsList.appendChild(noEntry);
-        }
-      } else {
-        const noEntry = document.createElement('li');
-        noEntry.classList.add('text-center', 'text-gray-600', 'text-lg');
-        noEntry.textContent = '이 날짜에는 기록이 없습니다.';
-        selectedDateEventsList.appendChild(noEntry);
+      }
+      
+      if (!hasContent) {
+        selectedDateEventsList.innerHTML = '<li class="text-center text-gray-600">이 날짜에는 기록이 없습니다.</li>';
       }
     }
 
     prevMonthBtn.addEventListener('click', () => {
       currentMonth--;
-      if (currentMonth < 0) {
-        currentMonth = 11;
-        currentYear--;
-      }
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
       renderCalendar();
     });
 
     nextMonthBtn.addEventListener('click', () => {
       currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
       renderCalendar();
     });
 
-    renderCalendar(); // Initial render
+    renderCalendar();
   });
 </script>
 {% endblock %}
