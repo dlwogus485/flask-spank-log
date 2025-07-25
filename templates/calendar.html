@@ -6,31 +6,27 @@
 <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
   <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">캘린더 보기</h2>
 
-  <!-- Calendar Section -->
-  <div class="mb-8 p-6 border border-gray-200 rounded-lg bg-gray-50">
+  <div class="mb-8 p-6 border rounded-lg bg-gray-50">
     <div class="flex justify-between items-center mb-4">
-      <button id="prevMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300">&lt; 이전 달</button>
-      <h3 id="currentMonthYear" class="text-xl font-semibold text-gray-800"></h3>
-      <button id="nextMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-300">다음 달 &gt;</button>
+      <button id="prevMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600">&lt; 이전 달</button>
+      <h3 id="currentMonthYear" class="text-xl font-semibold"></h3>
+      <button id="nextMonth" class="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600">다음 달 &gt;</button>
     </div>
     <div class="grid grid-cols-7 text-center font-bold text-gray-700 mb-2">
       <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
     </div>
-    <div id="calendarGrid" class="grid grid-cols-7 gap-1">
-      <!-- Calendar days will be rendered here by JavaScript -->
-    </div>
+    <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
   </div>
 
-  <!-- Events for selected date -->
-  <div class="p-6 border border-gray-200 rounded-lg bg-gray-50">
-    <h3 class="text-xl font-semibold text-gray-800 mb-4" id="selectedDateEventsHeader">선택된 날짜의 기록</h3>
+  <div class="p-6 border rounded-lg bg-gray-50">
+    <h3 class="text-xl font-semibold mb-4" id="selectedDateEventsHeader">선택된 날짜의 기록</h3>
     <ul id="selectedDateEventsList" class="space-y-4">
-      <li class="text-center text-gray-600 text-lg">날짜를 선택해주세요.</li>
+      <li class="text-center text-gray-600">날짜를 선택해주세요.</li>
     </ul>
   </div>
 
   <div class="mt-8 text-center">
-    <a href="{{ url_for('home') }}" class="inline-block text-blue-600 hover:underline font-medium">홈으로</a>
+    <a href="{{ url_for('home') }}" class="text-blue-600 hover:underline">홈으로</a>
   </div>
 </div>
 
@@ -62,9 +58,7 @@
         const process = (items, dateField, type) => {
             if (!items) return;
             items.forEach(item => {
-                const dateStr = item[dateField];
-                if (!dateStr) return;
-                const date = new Date(dateStr);
+                const date = new Date(item[dateField]);
                 const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 if (!eventsByDate[dateKey]) eventsByDate[dateKey] = {};
                 if (!eventsByDate[dateKey][type]) eventsByDate[dateKey][type] = [];
@@ -87,166 +81,69 @@
       const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
       const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
       const startingDayOfWeek = firstDayOfMonth.getDay(); 
-
       currentMonthYearHeader.textContent = `${currentYear}년 ${currentMonth + 1}월`;
 
-      for (let i = 0; i < startingDayOfWeek; i++) {
-        const emptyCell = document.createElement('div');
-        calendarGrid.appendChild(emptyCell);
-      }
+      for (let i = 0; i < startingDayOfWeek; i++) { calendarGrid.appendChild(document.createElement('div')); }
 
       for (let day = 1; day <= daysInMonth; day++) {
-        const date = new Date(currentYear, currentMonth, day);
-        const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dateKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const dayCell = document.createElement('div');
-        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'transition', 'duration-150', 'flex', 'flex-col', 'items-center', 'justify-center', 'min-h-[80px]'); 
+        dayCell.classList.add('p-2', 'text-center', 'rounded-md', 'cursor-pointer', 'min-h-[80px]'); 
         dayCell.textContent = day;
         dayCell.dataset.date = dateKey; 
-
         const dayEvents = eventsByDate[dateKey];
-        let eventIndicatorsHTML = '';
-        
         if (dayEvents) {
-            if (dayEvents.schedules) eventIndicatorsHTML += '<div class="w-2 h-2 bg-pink-500 rounded-full mt-1"></div>';
-            if (dayEvents.penalties) eventIndicatorsHTML += '<div class="w-2 h-2 bg-red-500 rounded-full mt-1"></div>';
-            if (dayEvents.resets) eventIndicatorsHTML += '<div class="w-2 h-2 bg-teal-500 rounded-full mt-1"></div>';
-            if (dayEvents.reports && !dayEvents.reports.some(r => r.is_holiday)) eventIndicatorsHTML += '<div class="w-2 h-2 bg-green-500 rounded-full mt-1"></div>';
-            // [추가] 유산소 운동, 소액결제, 체중 기록에 대한 점 표시
-            if (dayEvents.cardio_logs) eventIndicatorsHTML += '<div class="w-2 h-2 bg-orange-500 rounded-full mt-1"></div>';
-            if (dayEvents.payments) eventIndicatorsHTML += '<div class="w-2 h-2 bg-purple-500 rounded-full mt-1"></div>';
-            if (dayEvents.weight_entries) eventIndicatorsHTML += '<div class="w-2 h-2 bg-yellow-500 rounded-full mt-1"></div>';
-
-            if (dayEvents.reports && dayEvents.reports.some(r => r.is_holiday)) dayCell.classList.add('bg-gray-200', 'text-gray-500');
+            if (dayEvents.schedules) dayCell.classList.add('bg-pink-200');
+            if (dayEvents.penalties) dayCell.classList.add('bg-red-200');
+            if (dayEvents.reports && dayEvents.reports.some(r => r.is_holiday)) dayCell.classList.add('bg-gray-200');
         }
-        
-        dayCell.innerHTML += `<div class="flex flex-wrap justify-center gap-1">${eventIndicatorsHTML}</div>`;
-
-        const today = new Date();
-        if (date.toDateString() === today.toDateString()) {
-          dayCell.classList.add('ring-2', 'ring-blue-500');
-        }
-
+        if (new Date(dateKey).toDateString() === new Date().toDateString()) dayCell.classList.add('ring-2', 'ring-blue-500');
         dayCell.addEventListener('click', () => {
           displayEventsForDate(dateKey);
-          document.querySelectorAll('.calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected', 'bg-blue-200'));
-          dayCell.classList.add('calendar-day-selected', 'bg-blue-200');
+          document.querySelectorAll('.calendar-day-selected').forEach(el => el.classList.remove('calendar-day-selected', 'bg-blue-300'));
+          dayCell.classList.add('calendar-day-selected', 'bg-blue-300');
         });
         calendarGrid.appendChild(dayCell);
       }
     }
 
     function displayEventsForDate(dateKey) {
-      selectedDateEventsHeader.textContent = `${dateKey}의 기록`;
-      selectedDateEventsList.innerHTML = ''; 
-      const events = eventsByDate[dateKey];
-      let hasContent = false;
+        selectedDateEventsHeader.textContent = `${dateKey}의 기록`;
+        selectedDateEventsList.innerHTML = ''; 
+        const events = eventsByDate[dateKey];
+        let hasContent = false;
 
-      if (events) {
-        // 체벌/교육 일정
-        if (events.schedules) {
+        const createListItem = (className, content) => {
+            const li = document.createElement('li');
+            li.className = `p-3 rounded-lg ${className}`;
+            li.innerHTML = content;
+            selectedDateEventsList.appendChild(li);
             hasContent = true;
-            events.schedules.forEach(s => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-pink-100', 'p-3', 'rounded-lg');
-                const statusMap = {'pending': '체벌/교육 대기', 'approved': '체벌/교육 예정', 'completed': '체벌/교육 완료', 'evidence_uploaded': '증거 확인 대기중', 'rejected': '거절됨', 'rescheduled': '연기 요청됨'};
-                const statusText = statusMap[s.status] || s.status;
-                listItem.innerHTML = `<p class="font-semibold text-pink-700">${statusText}</p><p class="text-sm text-gray-700 mt-1">사유: ${s.reason}</p>`;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
+        };
 
-        // 벌점 리셋 이력
-        if (events.resets) {
-            hasContent = true;
-            events.resets.forEach(pr => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-teal-100', 'p-3', 'rounded-lg');
-                listItem.innerHTML = `<p class="font-semibold text-teal-700">벌점 리셋</p><p class="text-sm text-gray-700 mt-1">${pr.reset_points}점 리셋 (사유: ${pr.reset_reason})</p>`;
-                selectedDateEventsList.appendChild(listItem);
+        if (events) {
+            if (events.schedules) events.schedules.forEach(s => {
+                const statusMap = {'pending': '대기', 'approved': '예정', 'completed': '완료', 'evidence_uploaded': '증거 확인중', 'rejected': '거절', 'rescheduled': '연기 요청'};
+                createListItem('bg-pink-100', `<p class="font-semibold text-pink-700">체벌/교육 ${statusMap[s.status] || s.status}</p><p class="text-sm mt-1">${s.reason}</p>`);
+            });
+            if (events.resets) events.resets.forEach(pr => createListItem('bg-teal-100', `<p class="font-semibold text-teal-700">벌점 리셋</p><p class="text-sm mt-1">${pr.reset_points}점 (사유: ${pr.reset_reason})</p>`));
+            if (events.penalties) events.penalties.forEach(p => createListItem('bg-red-100', `<p class="font-semibold text-red-700">벌점: ${p.penalty_type}</p><p class="text-sm mt-1">${p.penalty_points}점 (사유: ${p.reason || '없음'})</p>`));
+            if (events.cardio_logs) events.cardio_logs.forEach(c => createListItem('bg-orange-100', `<p class="font-semibold text-orange-700">유산소 운동 인증</p>`));
+            if (events.payments) events.payments.forEach(p => createListItem('bg-purple-100', `<p class="font-semibold text-purple-700">소액결제</p><p class="text-sm mt-1">${p.description || '내역 없음'} - ${p.amount.toLocaleString()}원</p>`));
+            if (events.weight_entries) events.weight_entries.forEach(w => createListItem('bg-yellow-100', `<p class="font-semibold text-yellow-700">체중 기록</p><p class="text-sm mt-1">${w.weight_kg} kg</p>`));
+            if (events.reports) events.reports.forEach(r => {
+                if(r.is_holiday) createListItem('bg-gray-100', `<p class="font-semibold text-gray-700">✅ 휴무일</p>`);
+                else createListItem('bg-green-100', `<p class="font-semibold text-green-700">출근인증 ${r.is_late ? '<span class="text-red-500">(지각)</span>' : ''}</p><p class="text-sm mt-1">${r.content}</p>`);
             });
         }
-
-        // 벌점
-        if (events.penalties) {
-            hasContent = true;
-            events.penalties.forEach(p => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-red-100', 'p-3', 'rounded-lg');
-                listItem.innerHTML = `<p class="font-semibold text-red-700">벌점: ${p.penalty_type}</p><p class="text-sm text-gray-700 mt-1">${p.penalty_points}점 (사유: ${p.reason || '없음'})</p>`;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-        
-        // [추가] 유산소 운동 기록 표시
-        if (events.cardio_logs) {
-            hasContent = true;
-            events.cardio_logs.forEach(c => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-orange-100', 'p-3', 'rounded-lg');
-                const time = new Date(c.timestamp).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
-                listItem.innerHTML = `<p class="font-semibold text-orange-700">유산소 운동 인증 (${time})</p>`;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-
-        // [추가] 소액결제 기록 표시
-        if (events.payments) {
-            hasContent = true;
-            events.payments.forEach(p => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-purple-100', 'p-3', 'rounded-lg');
-                const time = new Date(p.timestamp).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
-                listItem.innerHTML = `<p class="font-semibold text-purple-700">소액결제 (${time})</p><p class="text-sm text-gray-700 mt-1">${p.description || '내역 없음'} - ${p.amount.toLocaleString()}원</p>`;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-
-        // [추가] 체중 기록 표시
-        if (events.weight_entries) {
-            hasContent = true;
-            events.weight_entries.forEach(w => {
-                const listItem = document.createElement('li');
-                listItem.classList.add('bg-yellow-100', 'p-3', 'rounded-lg');
-                const time = new Date(w.timestamp).toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'});
-                listItem.innerHTML = `<p class="font-semibold text-yellow-700">체중 기록 (${time})</p><p class="text-sm text-gray-700 mt-1">${w.weight_kg} kg</p>`;
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-
-        // 출근 인증
-        if (events.reports) {
-            hasContent = true;
-            events.reports.forEach(r => {
-                const listItem = document.createElement('li');
-                if(r.is_holiday) {
-                    listItem.classList.add('bg-gray-100', 'p-3', 'rounded-lg');
-                    listItem.innerHTML = `<p class="font-semibold text-gray-700">✅ 휴무일</p>`;
-                } else {
-                    listItem.classList.add('bg-green-100', 'p-3', 'rounded-lg');
-                    listItem.innerHTML = `<p class="font-semibold text-green-700">출근인증 ${r.is_late ? '<span class="text-red-500">(지각)</span>' : ''}</p><p class="text-sm text-gray-700 mt-1">${r.content}</p>`;
-                }
-                selectedDateEventsList.appendChild(listItem);
-            });
-        }
-      }
       
-      if (!hasContent) {
-        selectedDateEventsList.innerHTML = '<li class="text-center text-gray-600">이 날짜에는 기록이 없습니다.</li>';
-      }
+        if (!hasContent) {
+            selectedDateEventsList.innerHTML = '<li class="text-center text-gray-600">이 날짜에는 기록이 없습니다.</li>';
+        }
     }
 
-    prevMonthBtn.addEventListener('click', () => {
-      currentMonth--;
-      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-      renderCalendar();
-    });
-
-    nextMonthBtn.addEventListener('click', () => {
-      currentMonth++;
-      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-      renderCalendar();
-    });
-
+    prevMonthBtn.addEventListener('click', () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); });
+    nextMonthBtn.addEventListener('click', () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); });
     renderCalendar();
   });
 </script>

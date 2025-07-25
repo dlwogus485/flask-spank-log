@@ -25,19 +25,16 @@
             <ul class="space-y-4">
                 {% for req in pending_requests %}
                     <li class="bg-yellow-50 p-4 rounded-lg shadow-sm border border-yellow-200">
-                        <p class="text-gray-700 font-medium">
-                            <strong>요청일시:</strong> {{ req.requested_datetime.strftime('%Y-%m-%d %H:%M') }}
-                        </p>
-                        <p class="text-gray-800 mt-1"><strong>사유:</strong> {{ req.reason }}</p>
-                        {% if req.requested_tool %}
-                            <p class="text-gray-600 text-sm mt-1"><strong>희망 도구:</strong> {{ req.requested_tool }}</p>
-                        {% endif %}
+                        <p><strong>요청일시:</strong> {{ req.requested_datetime.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p class="text-red-600 font-bold"><strong>요청 벌점:</strong> {{ req.points_to_resolve }}점</p>
+                        <p><strong>사유:</strong> {{ req.reason }}</p>
+                        {% if req.requested_tool %}<p><strong>희망 도구:</strong> {{ req.requested_tool }}</p>{% endif %}
                         <div class="mt-3 flex space-x-2">
                             <form action="{{ url_for('approve_punishment', schedule_id=req.id) }}" method="post">
-                                <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300 text-sm">승인</button>
+                                <button type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">승인</button>
                             </form>
                             <form action="{{ url_for('reject_punishment', schedule_id=req.id) }}" method="post">
-                                <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300 text-sm">거절</button>
+                                <button type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">거절</button>
                             </form>
                         </div>
                     </li>
@@ -48,42 +45,25 @@
         {% endif %}
     </div>
 
-    <!-- 섹션 2: 처리할 일정 (승인, 증거 업로드 등) -->
+    <!-- 섹션 2: 처리 대기 중인 일정 -->
     <div class="mb-8">
         <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">처리 대기 중인 일정</h3>
         {% if active_schedules %}
             <ul class="space-y-4">
                 {% for schedule in active_schedules %}
                     <li class="bg-blue-50 p-4 rounded-lg shadow-sm border border-blue-200">
-                        <p class="text-gray-700 font-medium">
-                            <strong>요청일시:</strong> {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}
-                        </p>
-                        {% if schedule.approved_datetime %}
-                            <p class="text-gray-700 text-sm mt-1">
-                                <strong>확정일시:</strong> {{ schedule.approved_datetime.strftime('%Y-%m-%d %H:%M') }}
-                            </p>
-                        {% endif %}
-                        <p class="text-gray-800 mt-1"><strong>사유:</strong> {{ schedule.reason }}</p>
-                        {% if schedule.requested_tool %}
-                            <p class="text-gray-600 text-sm mt-1"><strong>희망 도구:</strong> {{ schedule.requested_tool }}</p>
-                        {% endif %}
-                        <p class="text-gray-700 text-sm mt-1"><strong>상태:</strong> {{ schedule.status }}</p>
-
+                        <p><strong>요청일시:</strong> {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p class="text-red-600 font-bold"><strong>차감될 벌점:</strong> {{ schedule.points_to_resolve }}점</p>
+                        <p><strong>사유:</strong> {{ schedule.reason }}</p>
+                        <p><strong>상태:</strong> {{ schedule.status }}</p>
                         <div class="mt-3 flex items-center space-x-2">
                             {% if schedule.status == 'evidence_uploaded' %}
-                                <span class="px-3 py-1 bg-green-200 text-green-800 text-xs font-semibold rounded-full">증거 업로드 완료</span>
-                                <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule.id) }}" class="text-blue-500 hover:underline text-sm">증거 보기</a>
+                                <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule.id) }}" class="text-blue-500 hover:underline">증거 보기</a>
                                 <form action="{{ url_for('complete_punishment', schedule_id=schedule.id) }}" method="post">
-                                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition duration-300 text-sm">
-                                        완료 처리 및 벌점 리셋
-                                    </button>
+                                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">완료 및 벌점 차감</button>
                                 </form>
                             {% elif schedule.status == 'approved' %}
                                 <span class="px-3 py-1 bg-yellow-200 text-yellow-800 text-xs font-semibold rounded-full">증거 대기 중</span>
-                            {% elif schedule.status == 'rejected' %}
-                                <span class="px-3 py-1 bg-red-200 text-red-800 text-xs font-semibold rounded-full">거절됨</span>
-                            {% else %}
-                                <span class="px-3 py-1 bg-gray-200 text-gray-800 text-xs font-semibold rounded-full">{{ schedule.status }}</span>
                             {% endif %}
                         </div>
                     </li>
@@ -94,25 +74,19 @@
         {% endif %}
     </div>
 
-    <!-- 섹션 3: 완료된 일정 (히스토리) -->
+    <!-- 섹션 3: 완료된 내역 (History) -->
     <div>
         <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2">완료된 내역 (History)</h3>
         {% if completed_schedules %}
             <ul class="space-y-4">
                 {% for schedule in completed_schedules %}
-                    <li class="bg-gray-100 p-4 rounded-lg shadow-sm border border-gray-200 opacity-70">
-                        <p class="text-gray-600 font-medium">
-                            <strong>요청일시:</strong> {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}
-                        </p>
-                        {% if schedule.approved_datetime %}
-                            <p class="text-gray-500 text-sm mt-1">
-                                <strong>확정일시:</strong> {{ schedule.approved_datetime.strftime('%Y-%m-%d %H:%M') }}
-                            </p>
-                        {% endif %}
-                        <p class="text-gray-700 mt-1"><strong>사유:</strong> {{ schedule.reason }}</p>
-                        <p class="text-gray-600 text-sm mt-1"><strong>상태:</strong> <span class="font-bold text-green-700">완료됨</span></p>
+                    <li class="bg-gray-100 p-4 rounded-lg opacity-70">
+                        <p><strong>요청일시:</strong> {{ schedule.requested_datetime.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p><strong>완료된 벌점:</strong> {{ schedule.points_to_resolve }}점</p>
+                        <p><strong>사유:</strong> {{ schedule.reason }}</p>
+                        <p><strong>상태:</strong> <span class="font-bold text-green-700">완료됨</span></p>
                         {% if schedule.evidence_uploaded %}
-                            <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule.id) }}" class="text-blue-500 hover:underline text-sm mt-2 inline-block">업로드된 증거 보기</a>
+                            <a href="{{ url_for('upload_punishment_evidence', schedule_id=schedule.id) }}" class="text-blue-500 hover:underline mt-2 inline-block">업로드된 증거 보기</a>
                         {% endif %}
                     </li>
                 {% endfor %}
