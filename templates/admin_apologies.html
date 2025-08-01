@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}반성문 관리{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-6xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">반성문 관리</h2>
+
+  <!-- 승인 대기중인 반성문 -->
+  <div class="mb-12">
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4 border-b-2 pb-2">승인 대기중</h3>
+    {% if pending_letters %}
+      <div class="space-y-6">
+        {% for letter in pending_letters %}
+          <div class="bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
+            <h4 class="text-xl font-bold text-gray-900">{{ letter.title }}</h4>
+            <p class="text-sm text-gray-600 mb-4">{{ letter.user.username }} | {{ letter.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+            
+            <div class="prose max-w-none bg-white p-4 rounded-md border max-h-60 overflow-y-auto mb-4" style="white-space: pre-wrap;">
+              {{ letter.content }}
+            </div>
+            
+            {% if letter.attachments %}
+              <div class="mb-4">
+                <p class="font-semibold mb-2 text-sm">첨부 파일:</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {% for filename in letter.attachments %}
+                    <div class="relative group">
+                      {% set file_ext = filename.split('.')[-1].lower() %}
+                      {% if file_ext in ['mp4', 'mov', 'avi'] %}
+                        <video controls class="w-full h-24 object-cover rounded-md bg-black">
+                          <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/{{ file_ext }}">
+                          Your browser does not support the video tag.
+                        </video>
+                      {% else %}
+                        <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank">
+                           <img src="{{ url_for('uploaded_file', filename=filename) }}" class="w-full h-24 object-cover rounded-md" alt="첨부 이미지">
+                        </a>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+
+            <div class="flex flex-col md:flex-row gap-4 items-center mt-4">
+              <form action="{{ url_for('approve_apology', letter_id=letter.id) }}" method="post" class="w-full md:w-auto">
+                <button type="submit" class="w-full px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">승인</button>
+              </form>
+              <form action="{{ url_for('reject_apology', letter_id=letter.id) }}" method="post" class="w-full md:flex-grow">
+                <div class="flex gap-2">
+                  <input type="text" name="admin_comment" placeholder="반려 사유 (선택)" class="flex-grow px-3 py-2 border rounded-lg">
+                  <button type="submit" class="px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">반려</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-center text-gray-500 py-8">승인 대기중인 반성문이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  <!-- 처리 완료된 반성문 -->
+  <div>
+    <h3 class="text-2xl font-semibold text-gray-800 mb-4 border-b-2 pb-2">처리 완료 내역</h3>
+    {% if other_letters %}
+      <div class="space-y-6">
+        {% for letter in other_letters %}
+          <div class="p-6 rounded-lg border {% if letter.status == 'approved' %}bg-green-50 border-green-200{% else %}bg-red-50 border-red-200{% endif %}">
+            <div class="flex justify-between items-start mb-4">
+              <div>
+                <h4 class="font-bold text-xl text-gray-800">{{ letter.title }}</h4>
+                <p class="text-sm text-gray-500">{{ letter.user.username }} | {{ letter.timestamp.strftime('%Y-%m-%d %H:%M') }}</p>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span class="px-3 py-1 text-sm font-semibold rounded-full {% if letter.status == 'approved' %}bg-green-200 text-green-800{% else %}bg-red-200 text-red-800{% endif %}">
+                  {{ {'approved': '승인됨', 'rejected': '반려됨'}[letter.status] }}
+                </span>
+                {% if letter.status == 'approved' %}
+                <form action="{{ url_for('delete_apology', letter_id=letter.id) }}" method="post" onsubmit="return confirm('이 반성문을 정말로 삭제하시겠습니까? 첨부파일도 함께 영구 삭제됩니다.')">
+                    <button type="submit" class="text-xs font-medium text-red-600 hover:text-red-800 hover:underline p-1">삭제</button>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- ▼▼▼ [수정] 처리 완료 내역에도 상세 보기 추가 ▼▼▼ -->
+            <div class="prose max-w-none bg-white p-4 rounded-md border max-h-60 overflow-y-auto mb-4" style="white-space: pre-wrap;">
+              {{ letter.content }}
+            </div>
+            
+            {% if letter.attachments %}
+              <div class="mb-4">
+                <p class="font-semibold mb-2 text-sm">첨부 파일:</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+                  {% for filename in letter.attachments %}
+                    <div class="relative group">
+                      {% set file_ext = filename.split('.')[-1].lower() %}
+                      {% if file_ext in ['mp4', 'mov', 'avi'] %}
+                        <video controls class="w-full h-24 object-cover rounded-md bg-black">
+                          <source src="{{ url_for('uploaded_file', filename=filename) }}" type="video/{{ file_ext }}">
+                          Your browser does not support the video tag.
+                        </video>
+                      {% else %}
+                        <a href="{{ url_for('uploaded_file', filename=filename) }}" target="_blank">
+                           <img src="{{ url_for('uploaded_file', filename=filename) }}" class="w-full h-24 object-cover rounded-md" alt="첨부 이미지">
+                        </a>
+                      {% endif %}
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+            
+            {% if letter.admin_comment %}
+            <p class="text-sm text-gray-700 mt-2 p-2 bg-gray-100 rounded"><strong>관리자 코멘트:</strong> {{ letter.admin_comment }}</p>
+            {% endif %}
+            <!-- ▲▲▲ 상세 보기 추가 완료 ▲▲▲ -->
+
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-center text-gray-500 py-8">처리 완료된 반성문이 없습니다.</p>
+    {% endif %}
+  </div>
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('admin_dashboard') }}" class="inline-block text-blue-600 hover:underline font-medium">관리자 홈으로</a>
+  </div>
+</div>
+{% endblock %}
+

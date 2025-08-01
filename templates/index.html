@@ -42,7 +42,7 @@
     <!-- 메뉴 바로가기 -->
     <div class="px-4 md:px-0">
         <h2 class="text-2xl font-bold text-gray-700 mb-4">메뉴 바로가기</h2>
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <a href="{{ url_for('commute_auth') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
                 <h3 class="font-bold text-gray-800 text-lg">출근인증 제출</h3><p class="text-sm text-gray-500 mt-1">오늘의 다짐과 함께 출근을 기록하세요.</p>
             </a>
@@ -61,10 +61,13 @@
             <a href="{{ url_for('upload_punishment_evidence') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
                 <h3 class="font-bold text-gray-800 text-lg">증거 업로드</h3><p class="text-sm text-gray-500 mt-1">완료된 일정의 증거를 제출합니다.</p>
             </a>
-            <a href="{{ url_for('penalties') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300 col-span-2 lg:col-span-1">
+            <a href="{{ url_for('apology_list') }}" class="group block p-6 bg-yellow-50 hover:bg-yellow-100 rounded-2xl border border-yellow-200 transition-all duration-300">
+                <h3 class="font-bold text-yellow-800 text-lg">반성문 작성</h3><p class="text-sm text-yellow-600 mt-1">반성문을 작성하고 관리합니다.</p>
+            </a>
+            <a href="{{ url_for('penalties') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300">
                 <h3 class="font-bold text-gray-800 text-lg">벌점 내역 보기</h3><p class="text-sm text-gray-500 mt-1">현재까지의 모든 벌점을 확인합니다.</p>
             </a>
-             <a href="{{ url_for('calendar_view') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300 col-span-2 lg:col-span-2">
+             <a href="{{ url_for('calendar_view') }}" class="group block p-6 bg-white hover:bg-gray-50 rounded-2xl border border-gray-200 transition-all duration-300 col-span-2 lg:col-span-full">
                 <h3 class="font-bold text-gray-800 text-lg">전체 캘린더 보기</h3><p class="text-sm text-gray-500 mt-1">모든 활동 기록을 달력에서 한눈에 확인하세요.</p>
             </a>
         </div>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{% if letter and letter.id %}반성문 수정{% else %}새 반성문 작성{% endif %}{% endblock %}
+
+{% block content %}
+<div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mx-auto">
+  <h2 class="text-3xl font-bold text-center text-gray-800 mb-8">
+    {% if letter and letter.id %}반성문 수정{% else %}새 반성문 작성{% endif %}
+  </h2>
+
+  <form method="post" enctype="multipart/form-data" class="space-y-6">
+    <div>
+      <label for="title" class="block text-sm font-medium text-gray-700 mb-1">제목</label>
+      <input type="text" id="title" name="title" value="{{ letter.title if letter else '' }}" required
+             placeholder="반성문의 제목을 입력하세요"
+             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <div>
+      <label for="content" class="block text-sm font-medium text-gray-700 mb-1">내용 (최소 500자)</label>
+      <textarea id="content" name="content" rows="15" required
+                placeholder="진심을 담아 500자 이상 작성해주세요."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y">{{ letter.content if letter else '' }}</textarea>
+      <p id="charCounter" class="text-sm text-right text-gray-500 mt-1">0 / 500자</p>
+    </div>
+
+    <div>
+      <label for="attachments" class="block text-sm font-medium text-gray-700 mb-1">첨부 파일 (선택 사항)</label>
+      <input type="file" id="attachments" name="attachments" multiple accept="image/*,video/*"
+             class="w-full text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+      <p class="mt-1 text-xs text-gray-500">사진이나 동영상을 첨부할 수 있습니다. (다중 선택 가능)</p>
+    </div>
+
+    <button type="submit" id="submitBtn"
+            class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow-md disabled:bg-gray-400">
+      제출하기
+    </button>
+  </form>
+
+  <div class="mt-8 text-center">
+    <a href="{{ url_for('apology_list') }}" class="inline-block text-gray-600 hover:underline font-medium">목록으로 돌아가기</a>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const contentArea = document.getElementById('content');
+  const charCounter = document.getElementById('charCounter');
+  const submitBtn = document.getElementById('submitBtn');
+
+  function updateCounter() {
+    const currentLength = contentArea.value.length;
+    charCounter.textContent = `${currentLength} / 500자`;
+
+    if (currentLength >= 500) {
+      charCounter.classList.remove('text-red-500');
+      charCounter.classList.add('text-green-500');
+      submitBtn.disabled = false;
+    } else {
+      charCounter.classList.add('text-red-500');
+      charCounter.classList.remove('text-green-500');
+      submitBtn.disabled = true;
+    }
+  }
+
+  contentArea.addEventListener('input', updateCounter);
+  // 페이지 로드 시 초기 카운트 실행
+  updateCounter();
+});
+</script>
+{% endblock %}
+

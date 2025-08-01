@@ -2,10 +2,12 @@ import os
 from flask import Flask, render_template, request, redirect, session, url_for, send_from_directory, flash
 from datetime import datetime, timedelta, date
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy import func, extract
 import json
+import mimetypes # 파일 타입을 추측하기 위해 추가
 
 app = Flask(__name__)
 
@@ -15,6 +17,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=31)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(app.instance_path, 'site.db')}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # --- 파일 업로드 설정 ---
 UPLOAD_FOLDER = 'static/uploads'
@@ -23,7 +26,7 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# --- 데이터베이스 모델 정의 ---
+# --- 데이터베이스 모델 정의 (생략) ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -113,6 +116,17 @@ class PenaltyResetHistory(db.Model):
     user = db.relationship('User', backref=db.backref('penalty_reset_history', lazy=True))
     def to_dict(self): return {'id': self.id, 'reset_date': self.reset_date.isoformat(), 'reset_reason': self.reset_reason, 'reset_points': self.reset_points}
 
+class ApologyLetter(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    attachment_filenames = db.Column(db.Text, nullable=True, default='[]')
+    status = db.Column(db.String(20), default='pending', nullable=False)
+    admin_comment = db.Column(db.Text, nullable=True)
+    timestamp = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    user = db.relationship('User', backref=db.backref('apology_letters', lazy=True))
+
 # --- 헬퍼 함수 ---
 def init_db():
     if not os.path.exists(app.instance_path):
@@ -134,6 +148,13 @@ def save_uploaded_file(file):
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
         return unique_filename
     return None
+
+def save_uploaded_files(files):
+    saved_filenames = []
+    for file in files:
+        if file and file.filename != '' and allowed_file(file.filename):
+            saved_filenames.append(save_uploaded_file(file))
+    return saved_filenames
 
 # --- 라우트 (Routes) ---
 @app.route('/login', methods=['GET', 'POST'])
@@ -199,10 +220,28 @@ def home():
                            last_commute=last_commute,
                            latest_admin_penalty=latest_admin_penalty)
 
+# ▼▼▼ [수정] 파일 보기/다운로드 로직 개선 ▼▼▼
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    try:
+        original_filename = filename.split('_', 1)[1]
+    except IndexError:
+        original_filename = filename
 
+    # 파일의 mimetype을 명시적으로 추측
+    mimetype, _ = mimetypes.guess_type(original_filename)
+    
+    # 모든 파일을 원본 이름으로 다운로드하도록 강제
+    return send_from_directory(
+        app.config['UPLOAD_FOLDER'],
+        filename,
+        as_attachment=True,
+        download_name=original_filename,
+        mimetype=mimetype # 브라우저에게 파일 종류를 알려줌
+    )
+# ▲▲▲ 수정 완료 ▲▲▲
+
+# (이하 다른 모든 라우트 함수들은 기존과 동일하게 유지됩니다)
 @app.route('/commute_auth', methods=['GET', 'POST']) 
 def commute_auth(): 
     if 'user_id' not in session or session.get('role') != 'sub':
@@ -272,7 +311,6 @@ def check_daily_weekly_penalties():
     if 'user_id' not in session:
         flash("벌점 확인 권한이 없습니다.", 'error')
         return redirect(url_for('login'))
-    # ... (벌점 확인 로직은 기존과 동일하게 유지) ...
     db.session.commit() 
     flash("벌점 확인이 완료되었습니다.", 'info')
     return redirect(url_for('penalties'))
@@ -324,7 +362,6 @@ def admin_data_management():
     if not ddang_user: return flash("댕댕님 계정을 찾을 수 없습니다.", 'error'), redirect(url_for('admin_dashboard'))
     ddang_user_id = ddang_user.id
     
-    # [수정] 체벌/교육 기록도 함께 조회합니다.
     punishment_schedules = PunishmentSchedule.query.filter_by(user_id=ddang_user_id).order_by(db.desc(PunishmentSchedule.timestamp)).all()
     for schedule in punishment_schedules:
         try:
@@ -354,11 +391,9 @@ def delete_admin_selected_data():
     for item_str in request.form.getlist('delete_items'):
         try:
             item_type, item_id = item_str.split('_')
-            # [수정] 체벌/교육 기록 삭제 로직 추가
             model_map = {'payment': Payment, 'cardio': Cardio, 'weight': WeightEntry, 'penalty': Penalty, 'punishment': PunishmentSchedule}
             record = model_map[item_type].query.filter_by(id=int(item_id), user_id=ddang_user_id).first()
             if record:
-                # [수정] 체벌/교육 기록 삭제 시, 연결된 파일도 함께 삭제
                 if item_type == 'punishment' and record.evidence_filenames:
                     try:
                         filenames = json.loads(record.evidence_filenames)
@@ -376,7 +411,6 @@ def delete_admin_selected_data():
     flash(f"{deleted_count}개의 기록이 삭제되었습니다.", 'success')
     return redirect(url_for('admin_data_management'))
 
-# [추가] 관리자 증거 파일 개별 삭제 라우트
 @app.route('/delete_evidence/<int:schedule_id>/<filename>', methods=['POST'])
 def delete_evidence_file(schedule_id, filename):
     if 'user_id' not in session or session.get('role') != 'owner':
@@ -387,20 +421,17 @@ def delete_evidence_file(schedule_id, filename):
     try:
         filenames_list = json.loads(schedule.evidence_filenames) if schedule.evidence_filenames else []
         if filename in filenames_list:
-            # 파일 시스템에서 파일 삭제
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             if os.path.exists(file_path):
                 os.remove(file_path)
             
-            # DB에서 파일 이름 제거
             filenames_list.remove(filename)
             schedule.evidence_filenames = json.dumps(filenames_list)
             
-            # 파일이 하나도 없으면 상태 변경 (선택적)
             if not filenames_list:
                 schedule.evidence_uploaded = False
                 if schedule.status == 'evidence_uploaded':
-                    schedule.status = 'approved' # 증거가 모두 삭제되면 다시 '승인' 상태로
+                    schedule.status = 'approved'
             
             db.session.commit()
             flash(f"파일 '{filename}'이(가) 삭제되었습니다.", 'success')
@@ -519,7 +550,6 @@ def upload_punishment_evidence(schedule_id=None):
     if schedule_id is None:
         query = PunishmentSchedule.query
         if user_role == 'sub':
-            # [수정] 완료된 일정도 볼 수 있도록 status에 'completed' 추가
             query = query.filter(PunishmentSchedule.user_id == session['user_id'], PunishmentSchedule.status.in_(['approved', 'rescheduled', 'evidence_uploaded', 'completed']))
         else:
             query = query.filter(PunishmentSchedule.status.in_(['evidence_uploaded', 'completed']))
@@ -604,23 +634,217 @@ def cardio():
 
 @app.route('/weight', methods=['GET', 'POST'])
 def weight():
-    if 'user_id' not in session or session.get('role') != 'sub': return flash("권한이 없습니다.", 'error'), redirect(url_for('login'))
+    if 'user_id' not in session or session.get('role') != 'sub': 
+        flash("권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+        
     user_id = session['user_id']
+    
     if request.method == 'POST':
         weight_kg = request.form.get('weight_kg', type=float)
         if not weight_kg or weight_kg <= 0:
-            return flash("유효한 체중을 입력해주세요.", 'error'), redirect(url_for('weight'))
+            flash("유효한 체중을 입력해주세요.", 'error')
+            return redirect(url_for('weight'))
+        
         new_weight_entry = WeightEntry(user_id=user_id, weight_kg=weight_kg)
         db.session.add(new_weight_entry)
+
+        today = date.today()
+        if today.weekday() == 0:
+            last_week_start = today - timedelta(days=7)
+            last_week_end = today - timedelta(days=1)
+            
+            last_week_latest_entry = WeightEntry.query.filter(
+                WeightEntry.user_id == user_id,
+                func.date(WeightEntry.timestamp).between(last_week_start, last_week_end)
+            ).order_by(WeightEntry.timestamp.desc()).first()
+
+            if last_week_latest_entry:
+                previous_weight = last_week_latest_entry.weight_kg
+                if weight_kg > previous_weight:
+                    reason = f"주간 체중 증가 ({previous_weight:.1f}kg → {weight_kg:.1f}kg)"
+                    new_penalty = Penalty(
+                        user_id=user_id,
+                        penalty_type='체중 관리',
+                        reason=reason,
+                        penalty_points=1,
+                        related_date=today
+                    )
+                    db.session.add(new_penalty)
+                    flash(f"전주 대비 체중이 증가하여 벌점 1점이 부과되었습니다. ({previous_weight:.1f}kg → {weight_kg:.1f}kg)", 'warning')
+
         db.session.commit()
         flash("체중이 기록되었습니다.", 'success')
         return redirect(url_for('weight'))
+        
     weight_entries = WeightEntry.query.filter_by(user_id=user_id).order_by(WeightEntry.timestamp).all() 
     labels = [entry.timestamp.strftime('%m-%d') for entry in weight_entries]
     data = [entry.weight_kg for entry in weight_entries]
-    return render_template('weight.html', weight_entries=weight_entries, chart_labels=json.dumps(labels), chart_data=json.dumps(data))
+    
+    return render_template('weight.html', 
+                           weight_entries=weight_entries, 
+                           chart_labels=json.dumps(labels), 
+                           chart_data=json.dumps(data))
 
-# [추가] DB 초기화를 위한 CLI 명령어
+# --- 반성문 관련 라우트 ---
+
+@app.route('/apology', methods=['GET'])
+def apology_list():
+    if 'user_id' not in session: return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    letters = ApologyLetter.query.filter_by(user_id=user_id).order_by(ApologyLetter.timestamp.desc()).all()
+    
+    for letter in letters:
+        try:
+            letter.attachments = json.loads(letter.attachment_filenames)
+        except (TypeError, json.JSONDecodeError):
+            letter.attachments = []
+
+    return render_template('apology_list.html', letters=letters)
+
+@app.route('/apology/new', methods=['GET', 'POST'])
+def new_apology():
+    if 'user_id' not in session or session.get('role') != 'sub':
+        flash("권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        files = request.files.getlist('attachments')
+
+        if not title or not content:
+            flash("제목과 내용은 필수 항목입니다.", 'error')
+            return render_template('apology_form.html', letter=None)
+        
+        if len(content) < 500:
+            flash("반성문은 500자 이상 작성해야 합니다.", 'error')
+            return render_template('apology_form.html', letter={'title': title, 'content': content})
+
+        attachment_filenames = save_uploaded_files(files)
+
+        new_letter = ApologyLetter(
+            user_id=session['user_id'],
+            title=title,
+            content=content,
+            attachment_filenames=json.dumps(attachment_filenames)
+        )
+        db.session.add(new_letter)
+        db.session.commit()
+        flash("반성문이 성공적으로 제출되었습니다.", 'success')
+        return redirect(url_for('apology_list'))
+
+    return render_template('apology_form.html', letter=None)
+
+@app.route('/apology/edit/<int:letter_id>', methods=['GET', 'POST'])
+def edit_apology(letter_id):
+    if 'user_id' not in session or session.get('role') != 'sub':
+        flash("권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+
+    letter = ApologyLetter.query.get_or_404(letter_id)
+    
+    if letter.user_id != session['user_id'] or letter.status != 'rejected':
+        flash("수정할 수 없는 반성문입니다.", 'error')
+        return redirect(url_for('apology_list'))
+
+    if request.method == 'POST':
+        letter.title = request.form.get('title')
+        letter.content = request.form.get('content')
+        files = request.files.getlist('attachments')
+
+        if not letter.title or not letter.content:
+            flash("제목과 내용은 필수 항목입니다.", 'error')
+            return render_template('apology_form.html', letter=letter)
+
+        if len(letter.content) < 500:
+            flash("반성문은 500자 이상 작성해야 합니다.", 'error')
+            return render_template('apology_form.html', letter=letter)
+
+        if files and files[0].filename:
+            new_filenames = save_uploaded_files(files)
+            try:
+                existing_files = json.loads(letter.attachment_filenames)
+            except (TypeError, json.JSONDecodeError):
+                existing_files = []
+            letter.attachment_filenames = json.dumps(existing_files + new_filenames)
+        
+        letter.status = 'pending'
+        letter.timestamp = datetime.now()
+        db.session.commit()
+        flash("반성문을 수정하여 다시 제출했습니다.", 'success')
+        return redirect(url_for('apology_list'))
+
+    return render_template('apology_form.html', letter=letter)
+    
+@app.route('/admin/apologies')
+def admin_apologies():
+    if 'user_id' not in session or session.get('role') != 'owner':
+        flash("권한이 없습니다.", 'error')
+        return redirect(url_for('login'))
+        
+    pending_letters = ApologyLetter.query.filter_by(status='pending').order_by(ApologyLetter.timestamp.desc()).all()
+    other_letters = ApologyLetter.query.filter(ApologyLetter.status.in_(['approved', 'rejected'])).order_by(ApologyLetter.timestamp.desc()).all()
+
+    for letter in pending_letters + other_letters:
+        try:
+            letter.attachments = json.loads(letter.attachment_filenames)
+        except (TypeError, json.JSONDecodeError):
+            letter.attachments = []
+
+    return render_template('admin_apologies.html', pending_letters=pending_letters, other_letters=other_letters)
+
+@app.route('/admin/apology/approve/<int:letter_id>', methods=['POST'])
+def approve_apology(letter_id):
+    if 'user_id' not in session or session.get('role') != 'owner':
+        return flash("권한이 없습니다.", 'error'), redirect(url_for('login'))
+    
+    letter = ApologyLetter.query.get_or_404(letter_id)
+    letter.status = 'approved'
+    db.session.commit()
+    flash(f"'{letter.title}' 반성문을 승인 처리했습니다.", 'success')
+    return redirect(url_for('admin_apologies'))
+
+@app.route('/admin/apology/reject/<int:letter_id>', methods=['POST'])
+def reject_apology(letter_id):
+    if 'user_id' not in session or session.get('role') != 'owner':
+        return flash("권한이 없습니다.", 'error'), redirect(url_for('login'))
+        
+    letter = ApologyLetter.query.get_or_404(letter_id)
+    letter.status = 'rejected'
+    letter.admin_comment = request.form.get('admin_comment', '')
+    db.session.commit()
+    flash(f"'{letter.title}' 반성문을 반려 처리했습니다.", 'warning')
+    return redirect(url_for('admin_apologies'))
+
+@app.route('/admin/apology/delete/<int:letter_id>', methods=['POST'])
+def delete_apology(letter_id):
+    if 'user_id' not in session or session.get('role') != 'owner':
+        return flash("권한이 없습니다.", 'error'), redirect(url_for('login'))
+    
+    letter = ApologyLetter.query.get_or_404(letter_id)
+    
+    if letter.attachment_filenames:
+        try:
+            filenames = json.loads(letter.attachment_filenames)
+            for filename in filenames:
+                try:
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                except Exception as e:
+                    print(f"Error deleting file {filename}: {e}")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    db.session.delete(letter)
+    db.session.commit()
+    
+    flash(f"'{letter.title}' 반성문이 영구적으로 삭제되었습니다.", 'success')
+    return redirect(url_for('admin_apologies'))
+
+# --- DB 초기화 명령어 ---
 @app.cli.command("init-db")
 def init_db_command():
     """데이터베이스 테이블을 생성하고 초기 사용자를 추가합니다."""
@@ -629,3 +853,4 @@ def init_db_command():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
